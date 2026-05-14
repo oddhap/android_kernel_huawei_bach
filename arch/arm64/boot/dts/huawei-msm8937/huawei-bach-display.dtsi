@@ -1,0 +1,111 @@
+#include "panels/dsi-panel-bach-inx-nt51021-1200p-video.dtsi"
+
+&tlmm {
+	i2c_1_active: i2c_1_active {
+		mux {
+			pins = "gpio2", "gpio3";
+			function = "blsp_i2c1";
+		};
+
+		config {
+			pins = "gpio2", "gpio3";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+	i2c_1_sleep: i2c_1_sleep {
+		mux {
+			pins = "gpio2", "gpio3";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio2", "gpio3";
+			drive-strength = <2>;
+			bias-disable;
+			output-high;
+		};
+	};
+};
+
+&pmx_mdss {
+	mdss_dsi_active {
+		mux {
+			pins = "gpio98", "gpio99";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio98", "gpio99";
+			drive-strength = <8>;
+			bias-disable = <0>;
+			output-high;
+		};
+	};
+
+	mdss_dsi_suspend {
+		mux {
+			pins = "gpio98", "gpio99";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio98", "gpio99";
+			drive-strength = <2>;
+			bias-pull-down;
+			input-enable;
+		};
+	};
+};
+
+&soc {
+	i2c_1: i2c@78b5000 {
+		compatible = "qcom,i2c-msm-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		reg = <0x78b5000 0x600>;
+		interrupt-names = "qup_irq";
+		interrupts = <0 95 0>;
+		clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
+			<&clock_gcc clk_gcc_blsp1_qup1_i2c_apps_clk>;
+		clock-names = "iface_clk", "core_clk";
+		qcom,clk-freq-out = <400000>;
+		qcom,clk-freq-in = <19200000>;
+		qcom,noise-rjct-scl = <0>;
+		qcom,noise-rjct-sda = <0>;
+		dmas = <&dma_blsp1 4 64 0x20000020 0x20>,
+			<&dma_blsp1 5 32 0x20000020 0x20>;
+		dma-names = "tx", "rx";
+		qcom,master-id = <86>;
+		status = "disabled";
+	};
+};
+
+&i2c_1 {
+	status = "ok";
+	pinctrl-names = "i2c_active", "i2c_sleep";
+	pinctrl-0 = <&i2c_1_active>;
+	pinctrl-1 = <&i2c_1_sleep>;
+
+	backlight@2c {
+		status = "ok";
+		compatible = "ti,lp8556";
+		reg = <0x2c>;
+		vdd-supply = <&pm8937_l6>;
+	};
+};
+
+&mdss_dsi0 {
+	/delete-property/ qcom,platform-reset-gpio;
+	qcom,dsi-pref-prim-pan = <&dsi_bach_inx_nt51021_1200p_video>;
+	pinctrl-names = "mdss_default", "mdss_sleep";
+	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
+	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
+};
+
+&mdss_dsi0_pll {
+	/delete-property/ qcom,dsi-pll-ssc-en;
+	/delete-property/ qcom,dsi-pll-ssc-mode;
+};

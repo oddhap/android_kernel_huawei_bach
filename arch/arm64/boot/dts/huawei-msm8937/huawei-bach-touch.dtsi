@@ -1,0 +1,99 @@
+&tlmm {
+	cyttsp5_int_active: cyttsp5_int_active {
+		mux {
+			pins = "gpio65";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio65";
+			drive-strength = <6>;
+			bias-disable;
+		};
+	};
+
+	cyttsp5_int_sleep: cyttsp5_int_sleep {
+		mux {
+			pins = "gpio65";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio65";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+	cyttsp5_rst_active: cyttsp5_rst_active {
+		mux {
+			pins = "gpio64";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio64";
+			drive-strength = <6>;
+			bias-disable;
+		};
+	};
+
+	cyttsp5_rst_sleep: cyttsp5_rst_sleep {
+		mux {
+			pins = "gpio64";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio64";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+};
+
+&i2c_3 {
+	status = "ok";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	qcom,clk-freq-out = <400000>;
+
+	touchscreen@24 {
+		compatible = "cy,cyttsp5_i2c_adapter";
+		reg = <0x24>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <65 0x2008>;
+		cy,adapter_id = "cyttsp5_i2c_adapter";
+		vcc_i2c-supply = <&pm8937_l6>;
+		vdd-supply = <&pm8937_l6>;
+		pinctrl-names = "pmx_ts_active", "pmx_ts_suspend";
+		pinctrl-0 = <&cyttsp5_int_active &cyttsp5_rst_active>;
+		pinctrl-1 = <&cyttsp5_int_sleep &cyttsp5_rst_sleep>;
+
+		cy,core {
+			cy,name = "cyttsp5_core";
+			cy,irq_gpio = <65>;
+			cy,rst_gpio = <64>;
+			cy,hid_desc_register = <1>;
+			cy,flags = <0>;
+			cy,easy_wakeup_gesture = <0>;
+
+			cy,mt {
+				cy,name = "cyttsp5_mt";
+				cy,inp_dev_name = "cyttsp5_mt";
+				cy,flags = <0x18>;
+				cy,abs =
+					<0x35 0 1200 0 0
+					 0x36 0 1920 0 0
+					 0x3a 0 1200 0 0
+					 0xffff 0 30 0 0
+					 0x39 0 15 0 0
+					 0x30 0 255 0 0
+					 0x31 0 255 0 0
+					 0x34 0xffffff80 127 0 0>;
+				cy,vkeys_x = <1200>;
+				cy,vkeys_y = <1920>;
+			};
+		};
+	};
+};

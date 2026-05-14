@@ -1,0 +1,76 @@
+/*
+ * Huawei Bach board-level overrides carried from the 3.18 vendor tree.
+ * Keep this file conservative: only add nodes that either match 4.9 drivers
+ * or are harmless metadata needed by vendor userspace.
+ */
+
+/ {
+	aliases {
+		i2c1 = &i2c_1;
+	};
+
+	huawei_wifi_info {
+		compatible = "huawei,hw_wifi_info";
+		status = "ok";
+		wifi,chiptype = "WIFI_QUALCOMM_WCN3680";
+		wifi,pubfile_id = "bah_w09";
+		wifi,fw_ver = "QCOM_WCN3680_2.0.2";
+		wifi,ini_type = "bach";
+	};
+
+	huawei_bt_info {
+		compatible = "huawei,hw_bt_info";
+		status = "ok";
+		bt,fw_ver = "QCOM_WCN3680_2.0.2";
+		bt,chiptype = "BT_FM_QUALCOMM_WCN3680";
+	};
+};
+
+&qpnp_smbcharger {
+	qcom,float-voltage-mv = <4350>;
+	qcom,jeita-temp-hard-limit = <1>;
+	qcom,fastchg-current-batt-warm = <1500>;
+	qcom,fastchg-current-batt-cool = <876>;
+	qcom,fastchg-current-customize-cool = <300>;
+	qcom,customize-cool-lower-limit = <0>;
+	qcom,customize-cool-upper-limit = <50>;
+	qcom,vfloat-batt-warm = <4100>;
+	qcom,device-not-support-hvdcp;
+	qcom,float-voltage-comp = <16>;
+	qcom,fastchg-current-ma = <2000>;
+	qcom,fastchg-current-comp = <1200>;
+	qcom,charge-unknown-battery;
+	qcom,iterm-ma = <150>;
+	qcom,dcp_icl_ma = <2000>;
+	qcom,pad-disable-ibus-detect;
+	qcom,charger-batt-capacity-mah = <6660000>;
+};
+
+&qpnp_fg {
+	qcom,ext-sense-type;
+	qcom,thermal-coefficients = [c8 86 c1 50 d3 37];
+	qcom,cold-bat-decidegc = <0>;
+	qcom,cool-bat-decidegc = <100>;
+	qcom,hot-bat-decidegc = <500>;
+	qcom,warm-bat-decidegc = <480>;
+	qcom,soc-at-term = <95>;
+	qcom,fg-chg-iterm-ma = <150>;
+	qcom,cold-hot-jeita-hysteresis = <20 20>;
+	qcom,fg-iterm-ma = <200>;
+	qcom,resume-soc = <99>;
+	qcom,resume-soc-raw = <253>;
+	qcom,fg-cutoff-voltage-mv = <3250>;
+	qcom,bad-battery-detection-enable;
+	qcom,hold-soc-while-full;
+	qcom,fg-vbat-estimate-diff-mv = <100>;
+	qcom,fg-cc-cv-threshold-mv = <4340>;
+	qcom,fg-therm-delay-us = <3000>;
+};
+
+&pm8937_l6 {
+	regulator-always-on;
+};
+
+&pm8937_l10 {
+	regulator-always-on;
+};

@@ -1,0 +1,24 @@
+/*
+ * Minimal Huawei MediaPad M3 Lite (BAH-W09/Bach) device tree for the
+ * MSM8937/8940 4.9 bring-up base.
+ *
+ * This starts from the upstream 4.9 msm8940-pmi8950 MTP description.
+ * Board-specific peripherals are ported in follow-up commits once the
+ * first DTB builds and can be validated by the bootloader/kernel.
+ */
+
+/dts-v1/;
+
+#include "../qcom/msm8940.dtsi"
+#include "../qcom/msm8940-pmi8950-mtp.dtsi"
+#include "huawei-bach-board.dtsi"
+#include "huawei-bach-display.dtsi"
+#include "huawei-bach-touch.dtsi"
+
+/ {
+	model = "Huawei Technologies, Inc. BAH-W09";
+	compatible = "huawei,bach", "qcom,msm8940-mtp", "qcom,msm8940", "qcom,mtp";
+	qcom,board-id = <8037 0>;
+	qcom,pmic-id = <0x10019 0x020011 0x0 0x0>;
+	huawei,modem_id = <0xFA000083 0x0>;
+};
