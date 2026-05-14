@@ -232,6 +232,8 @@ static const struct attribute_group attribute_group =
     .attrs = attributes,
 };
 
+static void fingerprint_input_report(struct fp_data* fingerprint, int key);
+
 static irqreturn_t fingerprint_irq_handler(int irq, void* handle)
 {
     struct fp_data* fingerprint = handle;
@@ -241,6 +243,11 @@ static irqreturn_t fingerprint_irq_handler(int irq, void* handle)
     if (atomic_read(&fingerprint->wakeup_enabled))
     {
         wake_lock_timeout(&fingerprint->ttw_wl, msecs_to_jiffies(fingerprint->irq_hold_time));
+    }
+
+    if (fp_LCD_POWEROFF == atomic_read(&fingerprint->state))
+    {
+        fingerprint_input_report(fingerprint, KEY_WAKEUP);
     }
 
     sysfs_notify(&fingerprint->pf_dev->dev.kobj, NULL, dev_attr_irq.attr.name);
@@ -1079,6 +1086,7 @@ static int fingerprint_probe(struct spi_device* spi)
     input_set_capability(fingerprint->input_dev, EV_KEY, EVENT_RIGHT);
     input_set_capability(fingerprint->input_dev, EV_KEY, EVENT_HOLD);
     input_set_capability(fingerprint->input_dev, EV_KEY, EVENT_CLICK);
+    input_set_capability(fingerprint->input_dev, EV_KEY, KEY_WAKEUP);
     input_set_capability(fingerprint->input_dev, EV_KEY, EVENT_HOLD);
     input_set_capability(fingerprint->input_dev, EV_KEY, EVENT_DCLICK);
     set_bit(EV_KEY, fingerprint->input_dev->evbit);
@@ -1087,6 +1095,7 @@ static int fingerprint_probe(struct spi_device* spi)
     set_bit(EVENT_LEFT, fingerprint->input_dev->evbit);
     set_bit(EVENT_RIGHT, fingerprint->input_dev->evbit);
     set_bit(EVENT_CLICK, fingerprint->input_dev->evbit);
+    set_bit(KEY_WAKEUP, fingerprint->input_dev->evbit);
     set_bit(EVENT_HOLD, fingerprint->input_dev->evbit);
     set_bit(EVENT_DCLICK, fingerprint->input_dev->evbit);
 
