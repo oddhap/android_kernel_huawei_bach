@@ -1148,6 +1148,7 @@ static int fingerprint_probe(struct spi_device* spi)
     enable_irq_wake(fingerprint->irq);
     atomic_set(&fingerprint->wakeup_enabled, 1);
     fingerprint->snr_stat = 0;
+    fingerprint->nav_stat = 1;
 
 
 #if defined(CONFIG_FB)

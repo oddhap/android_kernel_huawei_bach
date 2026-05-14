@@ -218,7 +218,11 @@ VPATH		:= $(srctree)$(if $(KBUILD_EXTMOD),:$(KBUILD_EXTMOD))
 
 export srctree objtree VPATH
 
+ifeq ($(USE_KERNEL_CCACHE),1)
 CCACHE := $(shell which ccache)
+else
+CCACHE :=
+endif
 
 # SUBARCH tells the usermode build what the underlying arch is.  That is set
 # first, and if a usermode build is happening, the "ARCH=um" on the command
