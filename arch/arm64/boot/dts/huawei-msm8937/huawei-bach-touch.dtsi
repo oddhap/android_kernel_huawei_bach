@@ -1,3 +1,25 @@
+&soc {
+	bach_tp_vci: regulator-tp-vci {
+		compatible = "regulator-fixed";
+		regulator-name = "bach_tp_vci";
+		regulator-min-microvolt = <2800000>;
+		regulator-max-microvolt = <2800000>;
+		gpio = <&tlmm 62 0>;
+		enable-active-high;
+		startup-delay-us = <10000>;
+	};
+
+	bach_tp_vddio: regulator-tp-vddio {
+		compatible = "regulator-fixed";
+		regulator-name = "bach_tp_vddio";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		gpio = <&tlmm 17 0>;
+		enable-active-high;
+		startup-delay-us = <10000>;
+	};
+};
+
 &tlmm {
 	cyttsp5_int_active: cyttsp5_int_active {
 		mux {
@@ -64,8 +86,8 @@
 		interrupt-parent = <&tlmm>;
 		interrupts = <65 0x2008>;
 		cy,adapter_id = "cyttsp5_i2c_adapter";
-		vcc_i2c-supply = <&pm8937_l6>;
-		vdd-supply = <&pm8937_l6>;
+		vcc_i2c-supply = <&bach_tp_vddio>;
+		vdd-supply = <&bach_tp_vci>;
 		pinctrl-names = "pmx_ts_active", "pmx_ts_suspend";
 		pinctrl-0 = <&cyttsp5_int_active &cyttsp5_rst_active>;
 		pinctrl-1 = <&cyttsp5_int_sleep &cyttsp5_rst_sleep>;

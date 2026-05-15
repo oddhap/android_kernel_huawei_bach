@@ -32,6 +32,23 @@ char *strstr(const char *s1, const char *s2)
 }
 #endif
 
+/**
+ * strrchr - Find the last occurrence of a character in a string
+ * @s: The string to be searched
+ * @c: The character to search for
+ */
+char *strrchr(const char *s, int c)
+{
+	const char *last = NULL;
+
+	do {
+		if (*s == (char)c)
+			last = s;
+	} while (*s++);
+
+	return (char *)last;
+}
+
 #ifndef __HAVE_ARCH_STRNCMP
 /**
  * strncmp - Compare two length-limited strings

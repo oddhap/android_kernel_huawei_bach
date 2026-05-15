@@ -20,6 +20,7 @@
 #include <linux/delay.h>
 #include <linux/slab.h>
 #include <linux/leds.h>
+#include <linux/backlight.h>
 #include <linux/qpnp/pwm.h>
 #include <linux/err.h>
 #include <linux/string.h>
@@ -50,6 +51,33 @@ char g_lcd_id[128];
 #endif
 
 DEFINE_LED_TRIGGER(bl_led_trigger);
+
+static void mdss_dsi_panel_external_bl_ctrl(
+		struct mdss_dsi_ctrl_pdata *ctrl_pdata, u32 bl_level)
+{
+	struct backlight_device *bl;
+
+	if (!ctrl_pdata->bklt_node) {
+		pr_err_ratelimited("%s: external backlight node missing\n",
+				__func__);
+		return;
+	}
+
+	bl = ctrl_pdata->bklt_device;
+	if (!bl) {
+		bl = of_find_backlight_by_node(ctrl_pdata->bklt_node);
+		if (!bl) {
+			pr_debug_ratelimited("%s: external backlight not ready\n",
+					__func__);
+			return;
+		}
+
+		ctrl_pdata->bklt_device = bl;
+	}
+
+	bl->props.brightness = bl_level;
+	backlight_update_status(bl);
+}
 
 void mdss_dsi_panel_pwm_cfg(struct mdss_dsi_ctrl_pdata *ctrl)
 {
@@ -1060,6 +1088,9 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 		break;
 	case BL_PWM:
 		mdss_dsi_panel_bklt_pwm(ctrl_pdata, bl_level);
+		break;
+	case BL_EXTERNAL:
+		mdss_dsi_panel_external_bl_ctrl(ctrl_pdata, bl_level);
 		break;
 	case BL_DCS_CMD:
 		if (!mdss_dsi_sync_wait_enable(ctrl_pdata)) {
@@ -2628,6 +2659,18 @@ int mdss_panel_parse_bl_settings(struct device_node *np,
 
 			pr_debug("%s: Configured DCS_CMD bklt ctrl\n",
 								__func__);
+		} else if (!strcmp(data, "bl_ctrl_external")) {
+			ctrl_pdata->bklt_ctrl = BL_EXTERNAL;
+			ctrl_pdata->bklt_node = of_parse_phandle(np,
+					"backlight", 0);
+			if (!ctrl_pdata->bklt_node) {
+				pr_err("%s: external backlight phandle missing\n",
+						__func__);
+				return -EINVAL;
+			}
+
+			pr_debug("%s: Configured external bklt ctrl\n",
+								__func__);
 		}
 	}
 	return 0;
@@ -2682,6 +2725,14 @@ void mdss_dsi_unregister_bl_settings(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
 	if (ctrl_pdata->bklt_ctrl == BL_WLED)
 		led_trigger_unregister_simple(bl_led_trigger);
+	if (ctrl_pdata->bklt_device) {
+		put_device(&ctrl_pdata->bklt_device->dev);
+		ctrl_pdata->bklt_device = NULL;
+	}
+	if (ctrl_pdata->bklt_node) {
+		of_node_put(ctrl_pdata->bklt_node);
+		ctrl_pdata->bklt_node = NULL;
+	}
 }
 
 static int mdss_dsi_panel_timing_from_dt(struct device_node *np,

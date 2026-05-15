@@ -6139,23 +6139,29 @@ static int cyttsp5_power_init(struct cyttsp5_core_data *cd, bool on)
 
 reg_vcc_i2c_put:
 	regulator_put(cd->vcc_i2c);
+	cd->vcc_i2c = NULL;
 reg_vdd_set_vtg:
 	if (regulator_count_voltages(cd->vdd) > 0)
 		regulator_set_voltage(cd->vdd, 0, FT_VTG_MAX_UV);
 reg_vdd_put:
 	regulator_put(cd->vdd);
+	cd->vdd = NULL;
 	return rc;
 
 pwr_deinit:
-	if (regulator_count_voltages(cd->vdd) > 0)
+	if (cd->vdd && regulator_count_voltages(cd->vdd) > 0)
 		regulator_set_voltage(cd->vdd, 0, FT_VTG_MAX_UV);
 
-	regulator_put(cd->vdd);
+	if (cd->vdd)
+		regulator_put(cd->vdd);
+	cd->vdd = NULL;
 
-	if (regulator_count_voltages(cd->vcc_i2c) > 0)
+	if (cd->vcc_i2c && regulator_count_voltages(cd->vcc_i2c) > 0)
 		regulator_set_voltage(cd->vcc_i2c, 0, FT_I2C_VTG_MAX_UV);
 
-	regulator_put(cd->vcc_i2c);
+	if (cd->vcc_i2c)
+		regulator_put(cd->vcc_i2c);
+	cd->vcc_i2c = NULL;
 	return 0;
 }
 
@@ -6296,8 +6302,10 @@ int cyttsp5_probe(const struct cyttsp5_bus_ops *ops, struct device *dev,
 	}
 
 	rc = cyttsp5_power_init(cd, true);
-	if (rc < 0)
+	if (rc < 0) {
 		dev_err(&client->dev, "failed to cyttsp5_power_init");
+		goto error_power;
+	}
 
 	rc = regulator_enable(cd->vdd);
 	if (rc) {

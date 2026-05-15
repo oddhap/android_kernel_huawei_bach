@@ -23,6 +23,11 @@
 /* LP8550/1/2/3/6 Registers */
 #define LP855X_BRIGHTNESS_CTRL		0x00
 #define LP855X_DEVICE_CTRL		0x01
+#define LP8556_LED_ENABLE		0x16
+#define LP8556_BOOST_FREQ		0xA6
+#define LP8556_CURRENT_LSB_CFG0		0xA0
+#define LP8556_CURRENT_LSB_CFG1		0xA1
+#define LP8556_CURRENT_LSB_CFG5		0xA5
 #define LP855X_EEPROM_START		0xA0
 #define LP855X_EEPROM_END		0xA7
 #define LP8556_EPROM_START		0xA0
@@ -158,6 +163,39 @@ static struct lp855x_device_config lp8557_dev_cfg = {
 	.post_init_device = lp8557_bl_on,
 };
 
+static void lp8556_write_optional_u8(struct lp855x *lp, const char *prop,
+				     u8 reg)
+{
+	u8 val;
+	int ret;
+
+	ret = of_property_read_u8(lp->dev->of_node, prop, &val);
+	if (ret)
+		return;
+
+	ret = lp855x_write_byte(lp, reg, val);
+	if (ret)
+		dev_warn(lp->dev, "failed to write %s reg 0x%.2x: %d\n",
+			 prop, reg, ret);
+}
+
+static void lp8556_apply_optional_init(struct lp855x *lp)
+{
+	if (lp->chip_id != LP8556)
+		return;
+
+	lp8556_write_optional_u8(lp, "ti,lp8556-led-enable",
+				 LP8556_LED_ENABLE);
+	lp8556_write_optional_u8(lp, "ti,lp8556-boost-freq",
+				 LP8556_BOOST_FREQ);
+	lp8556_write_optional_u8(lp, "ti,lp8556-current-lsb-cfg0",
+				 LP8556_CURRENT_LSB_CFG0);
+	lp8556_write_optional_u8(lp, "ti,lp8556-current-lsb-cfg1",
+				 LP8556_CURRENT_LSB_CFG1);
+	lp8556_write_optional_u8(lp, "ti,lp8556-current-lsb-cfg5",
+				 LP8556_CURRENT_LSB_CFG5);
+}
+
 /*
  * Device specific configuration flow
  *
@@ -203,11 +241,6 @@ static int lp855x_configure(struct lp855x *lp)
 	if (ret)
 		goto err;
 
-	val = pd->device_control;
-	ret = lp855x_write_byte(lp, lp->cfg->reg_devicectrl, val);
-	if (ret)
-		goto err;
-
 	if (pd->size_program > 0) {
 		for (i = 0; i < pd->size_program; i++) {
 			addr = pd->rom_data[i].addr;
@@ -220,6 +253,13 @@ static int lp855x_configure(struct lp855x *lp)
 				goto err;
 		}
 	}
+
+	lp8556_apply_optional_init(lp);
+
+	val = pd->device_control;
+	ret = lp855x_write_byte(lp, lp->cfg->reg_devicectrl, val);
+	if (ret)
+		goto err;
 
 	if (lp->cfg->post_init_device) {
 		ret = lp->cfg->post_init_device(lp);

@@ -206,8 +206,6 @@ section_table:
 efi_header_end:
 #endif
 
-	__INIT
-
 	/*
 	 * The following callee saved general purpose registers are used on the
 	 * primary lowlevel boot path:

@@ -99,6 +99,7 @@ enum dsi_panel_bl_ctrl {
 	BL_PWM,
 	BL_WLED,
 	BL_DCS_CMD,
+	BL_EXTERNAL,
 	UNKNOWN_CTRL,
 };
 
@@ -453,6 +454,8 @@ struct mdss_dsi_ctrl_pdata {
 	int lcd_mode_sel_gpio;
 	int bklt_ctrl;	/* backlight ctrl */
 	enum dsi_ctrl_op_mode bklt_dcs_op_mode; /* backlight dcs ctrl mode */
+	struct device_node *bklt_node;
+	struct backlight_device *bklt_device;
 	bool pwm_pmi;
 	int pwm_period;
 	int pwm_pmic_gpio;

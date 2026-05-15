@@ -89,16 +89,26 @@
 	pinctrl-0 = <&i2c_1_active>;
 	pinctrl-1 = <&i2c_1_sleep>;
 
-	backlight@2c {
+	bach_backlight: backlight@2c {
 		status = "ok";
 		compatible = "ti,lp8556";
 		reg = <0x2c>;
 		vdd-supply = <&pm8937_l6>;
+		bl-name = "lcd-backlight";
+		init-brt = /bits/ 8 <0x64>;
+		dev-ctrl = /bits/ 8 <0x87>;
+		ti,lp8556-led-enable = /bits/ 8 <0x0f>;
+		ti,lp8556-boost-freq = /bits/ 8 <0x40>;
+		ti,lp8556-current-lsb-cfg0 = /bits/ 8 <0xff>;
+		ti,lp8556-current-lsb-cfg1 = /bits/ 8 <0x3f>;
+		ti,lp8556-current-lsb-cfg5 = /bits/ 8 <0x2b>;
 	};
 };
 
 &mdss_dsi0 {
 	/delete-property/ qcom,platform-reset-gpio;
+	/delete-property/ lab-supply;
+	/delete-property/ ibb-supply;
 	qcom,dsi-pref-prim-pan = <&dsi_bach_inx_nt51021_1200p_video>;
 	pinctrl-names = "mdss_default", "mdss_sleep";
 	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
@@ -108,4 +118,9 @@
 &mdss_dsi0_pll {
 	/delete-property/ qcom,dsi-pll-ssc-en;
 	/delete-property/ qcom,dsi-pll-ssc-mode;
+};
+
+&dsi_panel_pwr_supply {
+	/delete-node/ qcom,panel-supply-entry@2;
+	/delete-node/ qcom,panel-supply-entry@3;
 };

@@ -22,3 +22,71 @@
 	qcom,pmic-id = <0x10019 0x020011 0x0 0x0>;
 	huawei,modem_id = <0xFA000083 0x0>;
 };
+
+&firmware {
+	android {
+		/delete-node/ vbmeta;
+
+		fstab {
+			vendor {
+				fsmgr_flags = "wait";
+			};
+
+			system {
+				compatible = "android,system";
+				dev = "/dev/block/platform/soc/7824900.sdhci/by-name/system";
+				type = "ext4";
+				mnt_flags = "ro,barrier=1,discard";
+				fsmgr_flags = "wait";
+				status = "ok";
+			};
+		};
+	};
+};
+
+&reserved_memory {
+	hwlog_tz_mem: hwlog_tz_region@92200000 {
+		linux,reserve-contiguous-region;
+		linux,reserve-region;
+		linux,remove-completely;
+		no-map;
+		reg = <0x0 0x92200000 0x0 0x0100000>;
+		label = "hwlog_tz_mem";
+	};
+
+	tzapp_mem: tzapp_region@92300000 {
+		linux,reserve-contiguous-region;
+		linux,reserve-region;
+		linux,remove-completely;
+		no-map;
+		reg = <0x0 0x92300000 0x0 0x1900000>;
+		label = "tzapp_mem";
+	};
+
+	irqtrace_mem: irqtrace_region@93c00000 {
+		compatible = "irqtrace_mem";
+		no-map;
+		reg = <0x0 0x93c00000 0x0 0x0080000>;
+	};
+
+	tasktrace_mem: tasktrace_region@93c80000 {
+		compatible = "tasktrace_mem";
+		no-map;
+		reg = <0x0 0x93c80000 0x0 0x0080000>;
+	};
+
+	ramoops@b0000000 {
+		compatible = "ramoops";
+		no-map;
+		reg = <0x0 0xb0000000 0x0 0x800000>;
+		record-size = <0x200000>;
+		console-size = <0x200000>;
+		pmsg-size = <0x200000>;
+		android,ramoops-buffer-start = <0xb0000000>;
+		android,ramoops-buffer-size = <0x800000>;
+		android,ramoops-record-size = <0x200000>;
+		android,ramoops-console-size = <0x200000>;
+		android,ramoops-pmsg-size = <0x200000>;
+		android,ramoops-dump-oops = <1>;
+	};
+};
