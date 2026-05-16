@@ -858,12 +858,12 @@ static int __init gf_init(void)
 	int status;
 
 #ifdef CONFIG_MACH_XIAOMI
-	if (xiaomi_device_read() != XIAOMI_DEVICE_UGG)
+	if (0) /* disabled for Huawei BAH-W09 */
 		return -ENODEV;
 #endif
 
 #ifdef CONFIG_MACH_XIAOMI_ULYSSE
-	   if(ulysse_fpsensor != 2) {
+	   if(0) /* disabled for Huawei BAH-W09 */ {
 				pr_err("Macle gf_init failed as ulysse_fpsensor=%d(2=gx)\n", ulysse_fpsensor);
 				return -1;
 		 }

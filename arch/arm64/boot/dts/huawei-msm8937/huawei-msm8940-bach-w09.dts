@@ -14,6 +14,7 @@
 #include "huawei-bach-board.dtsi"
 #include "huawei-bach-display.dtsi"
 #include "huawei-bach-touch.dtsi"
+#include "huawei-bach-fingerprint.dtsi"
 
 / {
 	model = "Huawei Technologies, Inc. BAH-W09";
