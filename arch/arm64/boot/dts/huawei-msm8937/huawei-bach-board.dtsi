@@ -74,3 +74,12 @@
 &pm8937_l10 {
 	regulator-always-on;
 };
+
+/* BAH-W09 needs larger ADSP firmware region (21MB vs default 17MB) */
+&adsp_fw_mem {
+	reg = <0x0 0x8d200000 0x0 0x1500000>;
+};
+
+&wcnss_fw_mem {
+	reg = <0x0 0x8e700000 0x0 0x700000>;
+};
