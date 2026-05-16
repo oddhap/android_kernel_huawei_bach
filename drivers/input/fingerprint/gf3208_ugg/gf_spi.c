@@ -394,7 +394,7 @@ static long gf_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		break;
 	case GF_IOC_DISABLE_IRQ:
 		pr_debug("%s GF_IOC_DISABEL_IRQ\n", __func__);
-		gf_disable_irq(gf_dev);
+		/* keep IRQ enabled for capacitive home button */
 		break;
 	case GF_IOC_ENABLE_IRQ:
 		pr_debug("%s GF_IOC_ENABLE_IRQ\n", __func__);
@@ -497,15 +497,25 @@ static long gf_compat_ioctl(struct file *filp, unsigned int cmd, unsigned long a
 
 static irqreturn_t gf_irq(int irq, void *handle)
 {
+	struct gf_dev *gf_dev = &gf;
+
 #if defined(GF_NETLINK_ENABLE)
 	char temp = GF_NET_EVENT_IRQ;
 	__pm_wakeup_event(&fp_wakelock, WAKELOCK_HOLD_TIME);
 	ugg_sendnlmsg(&temp);
 #elif defined (GF_FASYNC)
-	struct gf_dev *gf_dev = &gf;
 	if (gf_dev->async)
 		kill_fasync(&gf_dev->async, SIGIO, POLL_IN);
 #endif
+
+	/* Capacitive home button: report KEY_HOME on fingerprint touch */
+	if (gf_dev->input) {
+		set_bit(KEY_HOME, gf_dev->input->keybit);
+		input_report_key(gf_dev->input, KEY_HOME, 1);
+		input_sync(gf_dev->input);
+		input_report_key(gf_dev->input, KEY_HOME, 0);
+		input_sync(gf_dev->input);
+	}
 
 	return IRQ_HANDLED;
 }
@@ -582,7 +592,7 @@ static int gf_release(struct inode *inode, struct file *filp)
 	if (!gf_dev->users) {
 
 		pr_info("disble_irq. irq = %d\n", gf_dev->irq);
-		gf_disable_irq(gf_dev);
+		/* keep IRQ enabled for capacitive home button */
 		gf_dev->device_available = 0;
 		ugg_gf_power_off(gf_dev);
 	}
@@ -762,7 +772,7 @@ static int gf_probe(struct platform_device *pdev)
 	}
 	enable_irq_wake(gf_dev->irq);
 	gf_dev->irq_enabled = 1;
-	gf_disable_irq(gf_dev);
+	/* keep IRQ enabled for capacitive home button */
 
 	 proc_entry = proc_create(PROC_NAME, 0777, NULL, &proc_file_ops);
 	 if (NULL == proc_entry) {

@@ -7,3 +7,10 @@ source "drivers/input/fingerprint/fpc_landtoni/Kconfig"
 source "drivers/input/fingerprint/goodix_landtoni/Kconfig"
 
 endmenu
+
+config FINGERPRINT_HUAWEI_BACH
+	tristate "Huawei BAH fingerprint sensor driver"
+	depends on SPI
+	help
+	  Huawei BAH fingerprint sensor driver (3.18 port).
+	  Creates /dev/fingerprint for FPC HAL.

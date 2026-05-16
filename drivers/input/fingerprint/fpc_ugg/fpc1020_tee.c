@@ -646,6 +646,7 @@ static int fpc1020_remove(struct platform_device *pdev)
 
 static struct of_device_id fpc1020_of_match[] = {
 	{ .compatible = "fpc,fpc1020", },
+	{ .compatible = "fpc,fingerprint", },
 	{}
 };
 MODULE_DEVICE_TABLE(of, fpc1020_of_match);
@@ -665,7 +666,7 @@ static int __init fpc1020_init(void)
 	int rc;
 
 #ifdef CONFIG_MACH_XIAOMI
-	if (xiaomi_device_read() != XIAOMI_DEVICE_UGG)
+	if (0) /* disabled for Huawei BAH-W09 */
 		return -ENODEV;
 #endif
 

@@ -26,6 +26,59 @@
 	};
 };
 
+/* Add BAH-W09 battery profiles to existing mtp_batterydata node */
+&mtp_batterydata {
+	qcom,batt-id-range-pct = <15>;
+
+	qcom,HB26A5I0EBC_SONY_SCUD-4v4-6500mah {
+		qcom,max-voltage-uv = <4350000>;
+		qcom,nom-batt-capacity-mah = <6500>;
+		qcom,batt-id-kohm = <110>;
+		qcom,battery-beta = <3435>;
+		qcom,battery-type = "HB26A5I0EBC_SONY_SCUD-4v4-6500mah";
+		qcom,chg-rslow-comp-c1 = <2123564>;
+		qcom,chg-rslow-comp-c2 = <2036987>;
+		qcom,chg-rs-to-rslow = <552772>;
+		qcom,chg-rslow-comp-thr = <0x99>;
+		qcom,checksum = <0xA301>;
+		qcom,gui-version = "PMI8950GUI - 2.0.0.16";
+		qcom,fg-profile-data = [
+			D7 83 36 7C 60 80 E3 75 3F 83 B8 69 B2 78 C1 84
+			FA 81 74 99 6A B7 E7 C2 58 11 D6 83 7B 77 F4 7B
+			14 75 48 83 4E 68 24 81 C8 8D 11 82 28 9A 61 BD
+			D9 CA 55 0E 31 1A 52 58 CE 6E 02 FB D3 0E 61 3F
+			5F 38 00 00 85 3F D3 3B 8D 3E 00 00 00 00 00 00
+			00 00 00 00 AB 69 B3 68 89 75 E3 80 1E 7C B7 6B
+			81 75 AF 7B 0A 7C 86 6B EC 7B 1D C0 0E 6C 59 4E
+			4F A0 71 0C 28 00 FF 36 F0 11 30 03 00 00 00 0C
+		];
+	};
+
+	qcom,HB26A5I0EBC_ATL_SWD-4v4-6500mah {
+		qcom,max-voltage-uv = <4350000>;
+		qcom,nom-batt-capacity-mah = <6500>;
+		qcom,batt-id-kohm = <466>;
+		qcom,battery-beta = <3435>;
+		qcom,battery-type = "HB26A5I0EBC_ATL_SWD-4v4-6500mah";
+		qcom,chg-rslow-comp-c1 = <2663506>;
+		qcom,chg-rslow-comp-c2 = <3298688>;
+		qcom,chg-rs-to-rslow = <627344>;
+		qcom,chg-rslow-comp-thr = <0x99>;
+		qcom,checksum = <0xC6A9>;
+		qcom,gui-version = "PMI8950GUI - 2.0.0.16";
+		qcom,fg-profile-data = [
+			AE 82 6B 79 74 7C F2 71 26 83 08 79 B9 85 6A 81
+			50 82 E7 93 2C B5 91 C0 7D 11 E5 83 16 7C F1 7B
+			A2 74 46 83 CB 71 58 67 15 7D 46 82 8D 99 AB BC
+			4E C9 59 0D 82 1A B4 58 CE 6E 02 FB 8B 2D 67 3E
+			5F 38 00 00 D9 4C 07 39 AF 31 00 00 00 00 00 00
+			00 00 00 00 23 6A FC 68 15 74 2D 88 4D 7C 74 70
+			15 3D 66 82 3C 77 D4 6A 75 6D 22 B8 23 4C 62 BC
+			5F A0 71 0C 28 00 FF 36 F0 11 30 03 00 00 00 0C
+		];
+	};
+};
+
 &qpnp_smbcharger {
 	qcom,float-voltage-mv = <4350>;
 	qcom,jeita-temp-hard-limit = <1>;

@@ -3,3 +3,4 @@ obj-$(CONFIG_FINGERPRINT_FPC1020_UGG) += fpc_ugg/
 
 obj-$(CONFIG_FINGERPRINT_GOODIX_GF3208_LANDTONI) += goodix_landtoni/
 obj-$(CONFIG_FINGERPRINT_FPC1020_LANDTONI) += fpc_landtoni/
+obj-$(CONFIG_FINGERPRINT_HUAWEI_BACH) += fingerprint.o

@@ -1,25 +1,35 @@
 /*
- * Huawei BAH-W09 fingerprint — Goodix GF3208 (platform bus)
+ * Huawei BAH-W09 fingerprint — FPC1020 (SPI child of SPI6)
  *
- * SPI6 is enabled (pinctrl removed from base DTS to match 3.18).
- * The Goodix driver uses platform bus, so the fingerprint is a standalone
- * platform device, not an SPI child.
- *
- * GPIO 41 = power enable (goodix,gpio_ldo)
- * GPIO 46 = IRQ (goodix,gpio_irq)
- * GPIO 66 = reset (goodix,gpio_reset)
+ * Ported from 3.18 kernel (huawei-fingerprint.dtsi).
+ * GPIO assignments match 3.18 DTS:
+ *   GPIO 41 = avdd_en (power enable)
+ *   GPIO 46 = IRQ
+ *   GPIO 47 = vdd_en (power enable)
+ *   GPIO 66 = reset
+ *   GPIO 129 = module ID
  */
 
 &spi_6 {
 	status = "okay";
-};
 
-/ {
-	goodix_fp: goodix-fingerprint {
-		compatible = "goodix,fingerprint";
-		goodix,gpio_irq = <&tlmm 46 0>;
-		goodix,gpio_reset = <&tlmm 66 0>;
-		goodix,gpio_ldo = <&tlmm 41 0>;
+	fingerprint@0 {
+		compatible = "fpc,fingerprint";
+		reg = <0>;
+		spi-max-frequency = <5000000>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <46 0x0>;
+		fingerprint,irq_gpio = <&tlmm 46 0>;
+		fingerprint,reset_gpio = <&tlmm 66 0>;
+		fingerprint,avdd_en_gpio = <&tlmm 41 0>;
+		fingerprint,vdd_en_gpio = <&tlmm 47 0>;
+		fingerprint,moduleid_gpio = <&tlmm 129 0>;
+		fingerprint,moduleid_low = "SL";
+		fingerprint,navigation_adjust1 = <0>;
+		fingerprint,navigation_adjust2 = <180>;
+		fingerprint,irq_hold_time = <2000>;
+		vdd-supply = <&pm8937_l6>;
+		fingerprint,vdd = "vdd";
 		pinctrl-names = "default", "idle";
 		pinctrl-0 = <&fingerprint_active>;
 		pinctrl-1 = <&fingerprint_suspend>;
@@ -30,11 +40,11 @@
 &tlmm {
 	fingerprint_active: fingerprint_active {
 		mux {
-			pins = "gpio66", "gpio46", "gpio41";
+			pins = "gpio66", "gpio46", "gpio41", "gpio47", "gpio129";
 			function = "gpio";
 		};
 		config {
-			pins = "gpio66", "gpio46", "gpio41";
+			pins = "gpio66", "gpio46", "gpio41", "gpio47", "gpio129";
 			drive-strength = <2>;
 			bias-pull-down;
 		};
@@ -42,11 +52,11 @@
 
 	fingerprint_suspend: fingerprint_suspend {
 		mux {
-			pins = "gpio66", "gpio46", "gpio41";
+			pins = "gpio66", "gpio46", "gpio41", "gpio47", "gpio129";
 			function = "gpio";
 		};
 		config {
-			pins = "gpio66", "gpio46", "gpio41";
+			pins = "gpio66", "gpio46", "gpio41", "gpio47", "gpio129";
 			drive-strength = <2>;
 			bias-pull-down;
 		};
