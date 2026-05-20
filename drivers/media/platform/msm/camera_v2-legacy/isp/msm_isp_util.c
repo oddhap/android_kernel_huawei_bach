@@ -33,6 +33,7 @@ static struct dump_ping_pong_state dump_data;
 static struct dump_ping_pong_state tasklet_data;
 static DEFINE_SPINLOCK(dump_irq_lock);
 static DEFINE_SPINLOCK(dump_tasklet_lock);
+extern bool bach_front_hi843_hmirror_off;
 
 #define VFE40_8974V2_VERSION 0x1001001A
 
@@ -498,6 +499,15 @@ static int msm_isp_cfg_pix(struct vfe_device *vfe_dev,
 		input_cfg->d.pix_cfg.input_mux, CAMIF,
 		input_cfg->d.pix_cfg.input_format);
 
+	if (bach_front_hi843_hmirror_off &&
+		input_cfg->d.pix_cfg.input_format == V4L2_PIX_FMT_SGBRG10 &&
+		input_cfg->d.pix_cfg.pixel_pattern == ISP_BAYER_GBGBGB) {
+		input_cfg->d.pix_cfg.input_format = V4L2_PIX_FMT_SBGGR10;
+		vfe_dev->axi_data.src_info[VFE_PIX_0].input_format =
+			V4L2_PIX_FMT_SBGGR10;
+		input_cfg->d.pix_cfg.pixel_pattern = ISP_BAYER_BGBGBG;
+	}
+
 	if (input_cfg->d.pix_cfg.input_mux == CAMIF ||
 		input_cfg->d.pix_cfg.input_mux == TESTGEN) {
 		vfe_dev->axi_data.src_info[VFE_PIX_0].width =
@@ -815,6 +825,30 @@ static int msm_isp_proc_cmd_list(struct vfe_device *vfe_dev, void *arg)
 }
 #endif /* CONFIG_COMPAT */
 
+struct msm_vfe_axi_stream_cfg_cmd_3_18 {
+	uint8_t num_streams;
+	uint32_t stream_handle[VFE_AXI_SRC_MAX];
+	enum msm_vfe_axi_stream_cmd cmd;
+	uint8_t sync_frame_id_src;
+};
+
+#define VIDIOC_MSM_ISP_CFG_STREAM_3_18 \
+	_IOWR('V', MSM_ISP_CFG_STREAM, \
+		struct msm_vfe_axi_stream_cfg_cmd_3_18)
+
+static void msm_isp_cfg_stream_from_3_18(
+	struct msm_vfe_axi_stream_cfg_cmd *dst,
+	struct msm_vfe_axi_stream_cfg_cmd_3_18 *src)
+{
+	memset(dst, 0, sizeof(*dst));
+	dst->num_streams = src->num_streams;
+	memcpy(dst->stream_handle, src->stream_handle,
+		sizeof(src->stream_handle));
+	dst->cmd = src->cmd;
+	dst->sync_frame_id_src = src->sync_frame_id_src;
+	dst->hw_state = HW_STATE_NONE;
+}
+
 static long msm_isp_ioctl_unlocked(struct v4l2_subdev *sd,
 	unsigned int cmd, void *arg)
 {
@@ -889,6 +923,15 @@ static long msm_isp_ioctl_unlocked(struct v4l2_subdev *sd,
 		rc = msm_isp_cfg_axi_stream(vfe_dev, arg);
 		mutex_unlock(&vfe_dev->core_mutex);
 		break;
+	case VIDIOC_MSM_ISP_CFG_STREAM_3_18: {
+		struct msm_vfe_axi_stream_cfg_cmd stream_cfg;
+
+		msm_isp_cfg_stream_from_3_18(&stream_cfg, arg);
+		mutex_lock(&vfe_dev->core_mutex);
+		rc = msm_isp_cfg_axi_stream(vfe_dev, &stream_cfg);
+		mutex_unlock(&vfe_dev->core_mutex);
+		break;
+	}
 	case VIDIOC_MSM_ISP_CFG_HW_STATE:
 		mutex_lock(&vfe_dev->core_mutex);
 		rc = msm_isp_update_stream_bandwidth(vfe_dev,

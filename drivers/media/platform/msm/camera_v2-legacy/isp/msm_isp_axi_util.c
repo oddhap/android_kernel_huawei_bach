@@ -700,7 +700,7 @@ void msm_isp_update_framedrop_reg(struct vfe_device *vfe_dev,
 					MSM_VFE_STREAM_STOP_PERIOD;
 		}
 
-		if (stream_info->undelivered_request_cnt == 1)
+		if (stream_info->undelivered_request_cnt > 0)
 			stream_info->current_framedrop_period =
 				MSM_VFE_STREAM_STOP_PERIOD;
 
@@ -1314,7 +1314,6 @@ int msm_isp_request_axi_stream(struct vfe_device *vfe_dev, void *arg)
 			stream_cfg_cmd->axi_stream_handle);
 		return -EINVAL;
 	}
-
 	stream_info->rdi_input_type = stream_cfg_cmd->rdi_input_type;
 	vfe_dev->reg_update_requested &=
 		~(BIT(SRC_TO_INTF(stream_info->stream_src)));
@@ -3436,18 +3435,17 @@ static int msm_isp_request_frame(struct vfe_device *vfe_dev,
 	/*
 	 * If frame_id = 1 then no eof check is needed
 	 */
-	if (((frame_src == VFE_PIX_0) && ((frame_id !=
-		vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id + vfe_dev->
-		axi_data.src_info[VFE_PIX_0].sof_counter_step))) ||
-		((frame_src != VFE_PIX_0) && (frame_id !=
-		vfe_dev->axi_data.src_info[frame_src].frame_id + vfe_dev->
-		axi_data.src_info[frame_src].sof_counter_step)) ||
+	if (((vfe_dev->axi_data.src_info[VFE_PIX_0].active) &&
+		((frame_id + 1) <
+		vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id)) ||
+		((!vfe_dev->axi_data.src_info[VFE_PIX_0].active) &&
+		((frame_id + 1) <
+		vfe_dev->axi_data.src_info[frame_src].frame_id)) ||
 		stream_info->undelivered_request_cnt >= MAX_BUFFERS_IN_HW) {
 		pr_debug("%s:%d invalid request_frame %d cur frame id %d pix %d\n",
 			__func__, __LINE__, frame_id,
 			vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id,
 			vfe_dev->axi_data.src_info[VFE_PIX_0].active);
-
 		rc = msm_isp_return_empty_buffer(vfe_dev, stream_info,
 			user_stream_id, frame_id, buf_index, frame_src);
 		if (rc < 0)
@@ -3549,10 +3547,9 @@ static int msm_isp_request_frame(struct vfe_device *vfe_dev,
 		stream_info->sw_ping_pong_bit = 0;
 		stream_info->sw_sof_ping_pong_bit = 0;
 	} else if (stream_info->undelivered_request_cnt == 2) {
-		if (stream_info->sw_sof_ping_pong_bit)
-			pingpong_status = VFE_PING_FLAG;
-		else
-			pingpong_status = VFE_PONG_FLAG;
+		pingpong_status =
+			vfe_dev->hw_info->vfe_ops.axi_ops.get_pingpong_status(
+				vfe_dev);
 		rc = msm_isp_cfg_ping_pong_address(vfe_dev,
 				stream_info, pingpong_status, 0);
 		if (rc) {

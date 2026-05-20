@@ -1,0 +1,217 @@
+/*
+ * Huawei BAH-W09 audio overrides
+ * Overrides msm8937-audio.dtsi for TAS2560 Smart PA speakers
+ *
+ * Changes from base MTP config:
+ * - qcom,msm-ext-pa: "primary" -> "quinary", "quaternary" (TAS2560 on MI2S)
+ * - Add qcom,smartpa-name and qcom,smartpa-num for TAS2560
+ * - Replace WSA881x codecs on I2C2 with TAS2560 codecs
+ * - Remove WSA codec references (not used on BAH-W09)
+ */
+
+/* Override int_codec for TAS2560 Smart PA */
+&int_codec {
+	qcom,msm-ext-pa = "quinary", "quaternary";
+	qcom,smartpa-name = "tas2560";
+	qcom,smartpa-num = <4>;
+	qcom,msm-mbhc-hphl-swh = <1>;
+	qcom,msm-mbhc-gnd-swh = <1>;
+	qcom,msm-mbhc-butt-threshold-cust = <75 75 80 80 205 205 450 475 500 500>;
+	qcom,force-gnd-mic-swap-to-headphone;
+	qcom,msm-mbhc-insert-debounce = <11>;
+	qcom,msm-mbhc-headphone-gain-default-high;
+	qcom,quin-mi2s-gpios = <&cdc_quin_mi2s_gpios>;
+	qcom,quat-mi2s-gpios = <&bach_quat_mi2s_gpios>;
+
+	/* Remove WSA codec references */
+	/delete-property/ asoc-wsa-codec-names;
+	/delete-property/ asoc-wsa-codec-prefixes;
+	/delete-property/ msm-vdd-wsa-switch-supply;
+	/delete-property/ qcom,msm-vdd-wsa-switch-voltage;
+	/delete-property/ qcom,msm-vdd-wsa-switch-current;
+};
+
+&cdc_quin_mi2s_gpios {
+	pinctrl-0 = <&quin_mi2s_act &quin_mi2s_ws_act>;
+	pinctrl-1 = <&quin_mi2s_sus &quin_mi2s_ws_sus>;
+};
+
+/ {
+	bach_quat_mi2s_gpios: bach_cdc_pinctrl_quat {
+		compatible = "qcom,msm-cdc-pinctrl";
+		pinctrl-names = "aud_active", "aud_sleep";
+		pinctrl-0 = <&sec_tlmm_lines_act>;
+		pinctrl-1 = <&sec_tlmm_lines_sus>;
+	};
+};
+
+/* Replace WSA881x codecs on I2C2 with TAS2560 */
+&i2c_2 {
+	/delete-node/ wsa881x-i2c-codec@f;
+	/delete-node/ wsa881x-i2c-codec@45;
+
+	tas2560@4c {
+		compatible = "ti,tas2560s";
+		reg = <0x4c>;
+		ti,load = <0>;
+		ti,edge-level = <4>;
+		ti,AGC-disable;
+		i2c-pull-up;
+		vdd-supply = <&pm8937_l6>;
+		vcc_i2c-supply = <&pm8937_l6>;
+		ti,reset-gpio = <&tlmm 19 0>;
+		ti,irq-gpio = <&tlmm 93 0>;
+		status = "okay";
+	};
+
+	tas2560@4e {
+		compatible = "ti,tas2560s";
+		reg = <0x4e>;
+		ti,load = <0>;
+		ti,edge-level = <4>;
+		ti,AGC-disable;
+		i2c-pull-up;
+		vdd-supply = <&pm8937_l6>;
+		vcc_i2c-supply = <&pm8937_l6>;
+		ti,reset-gpio = <&tlmm 19 0>;
+		ti,irq-gpio = <&tlmm 34 0>;
+		status = "okay";
+	};
+
+	tas2560@4d {
+		compatible = "ti,tas2560s";
+		reg = <0x4d>;
+		ti,load = <0>;
+		ti,edge-level = <4>;
+		ti,AGC-disable;
+		i2c-pull-up;
+		vdd-supply = <&pm8937_l6>;
+		vcc_i2c-supply = <&pm8937_l6>;
+		ti,reset-gpio = <&tlmm 19 0>;
+		ti,irq-gpio = <&tlmm 124 0>;
+		status = "okay";
+	};
+
+	tas2560@4f {
+		compatible = "ti,tas2560s";
+		reg = <0x4f>;
+		ti,load = <0>;
+		ti,edge-level = <4>;
+		ti,AGC-disable;
+		i2c-pull-up;
+		vdd-supply = <&pm8937_l6>;
+		vcc_i2c-supply = <&pm8937_l6>;
+		ti,reset-gpio = <&tlmm 19 0>;
+		ti,irq-gpio = <&tlmm 35 0>;
+		status = "okay";
+	};
+};
+
+/* Disable WSA881x pinctrl nodes (not used on BAH-W09) */
+&wsa881x_analog_vi_gpio {
+	status = "disabled";
+};
+
+&wsa881x_analog_clk_gpio {
+	status = "disabled";
+};
+
+&wsa881x_analog_reset_gpio {
+	status = "disabled";
+};
+
+/* MI2S pinctrl for TAS2560 audio routing */
+&tlmm {
+	quin_mi2s_act: quin_mi2s_act {
+		mux {
+			pins = "gpio85", "gpio86", "gpio88";
+			function = "pri_mi2s";
+		};
+		config {
+			pins = "gpio85", "gpio86", "gpio88";
+			drive-strength = <8>;
+		};
+	};
+
+	quin_mi2s_sus: quin_mi2s_sus {
+		mux {
+			pins = "gpio85", "gpio86", "gpio88";
+			function = "pri_mi2s";
+		};
+		config {
+			pins = "gpio85", "gpio86", "gpio88";
+			drive-strength = <2>;
+			bias-pull-down;
+		};
+	};
+
+	quin_mi2s_ws_act: quin_mi2s_ws_act {
+		mux {
+			pins = "gpio87";
+			function = "pri_mi2s_ws";
+		};
+		config {
+			pins = "gpio87";
+			drive-strength = <8>;
+		};
+	};
+
+	quin_mi2s_ws_sus: quin_mi2s_ws_sus {
+		mux {
+			pins = "gpio87";
+			function = "pri_mi2s_ws";
+		};
+		config {
+			pins = "gpio87";
+			drive-strength = <2>;
+			bias-pull-down;
+		};
+	};
+
+	sec_tlmm_lines_act: sec_tlmm_lines_act {
+		mux {
+			pins = "gpio94", "gpio95", "gpio12", "gpio13";
+			function = "sec_mi2s";
+		};
+		config {
+			pins = "gpio94", "gpio95", "gpio12", "gpio13";
+			drive-strength = <8>;
+		};
+	};
+
+	sec_tlmm_lines_sus: sec_tlmm_lines_sus {
+		mux {
+			pins = "gpio94", "gpio95", "gpio12", "gpio13";
+			function = "sec_mi2s";
+		};
+		config {
+			pins = "gpio94", "gpio95", "gpio12", "gpio13";
+			drive-strength = <2>;
+			bias-pull-down;
+		};
+	};
+
+	tas_reset_active: tas_reset_active {
+		mux {
+			pins = "gpio19";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio19";
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+	};
+
+	tas_reset_sleep: tas_reset_sleep {
+		mux {
+			pins = "gpio19";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio19";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+};

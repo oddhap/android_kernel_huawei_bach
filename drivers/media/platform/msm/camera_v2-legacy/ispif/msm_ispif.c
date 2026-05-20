@@ -138,6 +138,12 @@ struct ispif_cfg_data_ext_32 {
 	_IOWR('V', BASE_VIDIOC_PRIVATE+1, struct ispif_cfg_data_ext_32)
 #endif
 
+struct msm_ispif_param_data_ext_3_18 {
+	uint32_t num;
+	struct msm_ispif_params_entry entries[MAX_PARAM_ENTRIES];
+	struct msm_ispif_pack_cfg pack_cfg[CID_MAX];
+};
+
 static void msm_ispif_get_pack_mask_from_cfg(
 	struct msm_ispif_pack_cfg *pack_cfg,
 	struct msm_ispif_params_entry *entry,
@@ -263,8 +269,13 @@ static long msm_ispif_cmd_ext(struct v4l2_subdev *sd,
 		pcdata.data = pcdata64->data;
 	}
 	if (pcdata.size != sizeof(struct msm_ispif_param_data_ext)) {
-		pr_err("%s: payload size mismatch\n", __func__);
-		return -EINVAL;
+		if (pcdata.size != sizeof(struct msm_ispif_param_data_ext_3_18)) {
+			pr_err("%s: payload size mismatch %u expected %zu or %zu\n",
+				__func__, pcdata.size,
+				sizeof(struct msm_ispif_param_data_ext),
+				sizeof(struct msm_ispif_param_data_ext_3_18));
+			return -EINVAL;
+		}
 	}
 
 	params = kzalloc(sizeof(struct msm_ispif_param_data_ext), GFP_KERNEL);

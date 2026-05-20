@@ -91,6 +91,13 @@ static int32_t msm_sensor_driver_cmd(struct msm_sensor_init_t *s_init,
 		msm_sensor_wait_for_probe_done(s_init);
 		break;
 
+	case CFG_SINIT_GET_PRODUCT_NAME:
+		rc = msm_get_sensor_product_name(cfg->cfg.setting);
+		if (rc < 0)
+			pr_err("%s failed to get product names rc %d",
+				__func__, rc);
+		break;
+
 	default:
 		pr_err("default");
 		break;

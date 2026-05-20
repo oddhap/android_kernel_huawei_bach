@@ -94,6 +94,13 @@ static int32_t msm_sensor_driver_cmd(struct msm_sensor_init_t *s_init,
 		msm_sensor_wait_for_probe_done(s_init);
 		break;
 
+	case CFG_SINIT_GET_PRODUCT_NAME:
+		rc = land_msm_get_sensor_product_name(cfg->cfg.setting);
+		if (rc < 0)
+			pr_err("%s failed to get product names rc %d",
+				__func__, rc);
+		break;
+
 	default:
 		pr_err("default");
 		break;
@@ -121,7 +128,9 @@ static long msm_sensor_init_subdev_ioctl(struct v4l2_subdev *sd,
 		break;
 
 	default:
-		pr_err_ratelimited("default\n");
+		pr_err_ratelimited("default cmd=0x%x expected=0x%lx compat=0x%lx",
+			cmd, (unsigned long)VIDIOC_MSM_SENSOR_INIT_CFG,
+			(unsigned long)VIDIOC_MSM_SENSOR_INIT_CFG32);
 		break;
 	}
 
@@ -141,6 +150,9 @@ static long msm_sensor_init_subdev_do_ioctl(
 
 	switch (cmd) {
 	case VIDIOC_MSM_SENSOR_INIT_CFG32:
+		pr_info_ratelimited("compat cmd=0x%x expected32=0x%lx expected64=0x%lx",
+			cmd, (unsigned long)VIDIOC_MSM_SENSOR_INIT_CFG32,
+			(unsigned long)VIDIOC_MSM_SENSOR_INIT_CFG);
 		memset(&sensor_init_data, 0, sizeof(sensor_init_data));
 		sensor_init_data.cfgtype = u32->cfgtype;
 		sensor_init_data.cfg.setting = compat_ptr(u32->cfg.setting);
@@ -156,6 +168,9 @@ static long msm_sensor_init_subdev_do_ioctl(
 			sizeof(sensor_init_data.entity_name));
 		return 0;
 	default:
+		pr_err_ratelimited("compat default cmd=0x%x expected32=0x%lx expected64=0x%lx",
+			cmd, (unsigned long)VIDIOC_MSM_SENSOR_INIT_CFG32,
+			(unsigned long)VIDIOC_MSM_SENSOR_INIT_CFG);
 		return msm_sensor_init_subdev_ioctl(sd, cmd, arg);
 	}
 }

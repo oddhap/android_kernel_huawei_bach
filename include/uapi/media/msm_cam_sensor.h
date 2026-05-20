@@ -14,6 +14,8 @@
 #define MSM_SENSOR_MCLK_24HZ  24000000
 
 #define MAX_SENSOR_NAME 32
+#define MAX_SUPPORT_SENSOR_COUNT 2
+#define APP_INFO_MAX_LINE_LEN 128
 #define MAX_ACTUATOR_AF_TOTAL_STEPS 1024
 
 #define MAX_OIS_MOD_NAME_SIZE 32
@@ -569,6 +571,7 @@ enum msm_sensor_init_cfg_type_t {
 	CFG_SINIT_PROBE,
 	CFG_SINIT_PROBE_DONE,
 	CFG_SINIT_PROBE_WAIT_DONE,
+	CFG_SINIT_GET_PRODUCT_NAME,
 };
 
 struct sensor_init_cfg_data {
@@ -578,6 +581,10 @@ struct sensor_init_cfg_data {
 	union {
 		void *setting;
 	} cfg;
+};
+
+struct msm_support_product_name_info {
+	char product_name_info[MAX_SUPPORT_SENSOR_COUNT][APP_INFO_MAX_LINE_LEN];
 };
 
 #define VIDIOC_MSM_SENSOR_CFG \
@@ -632,4 +639,3 @@ struct sensor_init_cfg_data {
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 16, struct msm_laser_led_cfg_data_t)
 
 #endif
-

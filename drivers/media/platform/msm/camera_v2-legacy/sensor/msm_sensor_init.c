@@ -105,6 +105,13 @@ static int32_t msm_sensor_driver_cmd(struct msm_sensor_init_t *s_init,
 		rc = msm_sensor_wait_for_probe_done(s_init);
 		break;
 
+	case CFG_SINIT_GET_PRODUCT_NAME:
+		rc = msm_get_sensor_product_name(cfg->cfg.setting);
+		if (rc < 0)
+			pr_err("%s failed to get product names rc %d",
+				__func__, rc);
+		break;
+
 	default:
 		pr_err("default");
 		break;
@@ -132,7 +139,9 @@ static long msm_sensor_init_subdev_ioctl(struct v4l2_subdev *sd,
 		break;
 
 	default:
-		pr_err_ratelimited("default\n");
+		pr_err_ratelimited("default cmd=0x%x expected=0x%lx compat=0x%lx",
+			cmd, (unsigned long)VIDIOC_MSM_SENSOR_INIT_CFG,
+			(unsigned long)VIDIOC_MSM_SENSOR_INIT_CFG32);
 		break;
 	}
 
@@ -140,6 +149,27 @@ static long msm_sensor_init_subdev_ioctl(struct v4l2_subdev *sd,
 }
 
 #ifdef CONFIG_COMPAT
+static void msm_sensor_copy_probe_info_to_3_18(
+	struct sensor_init_cfg_data32_3_18 *dst,
+	struct sensor_init_cfg_data *src)
+{
+	int i;
+
+	strlcpy(dst->probed_info.sensor_name, src->probed_info.sensor_name,
+		sizeof(dst->probed_info.sensor_name));
+	dst->probed_info.session_id = src->probed_info.session_id;
+	for (i = 0; i < MSM_SENSOR_3_18_SUB_MODULE_MAX; i++) {
+		dst->probed_info.subdev_id[i] = src->probed_info.subdev_id[i];
+		dst->probed_info.subdev_intf[i] = src->probed_info.subdev_intf[i];
+	}
+	dst->probed_info.is_mount_angle_valid =
+		src->probed_info.is_mount_angle_valid;
+	dst->probed_info.sensor_mount_angle = src->probed_info.sensor_mount_angle;
+	dst->probed_info.modes_supported = src->probed_info.modes_supported;
+	dst->probed_info.position = src->probed_info.position;
+	strlcpy(dst->entity_name, src->entity_name, sizeof(dst->entity_name));
+}
+
 static long msm_sensor_init_subdev_do_ioctl(
 	struct file *file, unsigned int cmd, void *arg)
 {
@@ -148,10 +178,30 @@ static long msm_sensor_init_subdev_do_ioctl(
 	struct v4l2_subdev *sd = vdev_to_v4l2_subdev(vdev);
 	struct sensor_init_cfg_data32 *u32 =
 		(struct sensor_init_cfg_data32 *)arg;
+	struct sensor_init_cfg_data32_3_18 *u32_3_18 =
+		(struct sensor_init_cfg_data32_3_18 *)arg;
 	struct sensor_init_cfg_data sensor_init_data;
 
 	switch (cmd) {
+	case VIDIOC_MSM_SENSOR_INIT_CFG32_3_18:
+		pr_info_ratelimited("compat 3.18 cmd=0x%x expected32=0x%lx",
+			cmd, (unsigned long)VIDIOC_MSM_SENSOR_INIT_CFG32);
+		memset(&sensor_init_data, 0, sizeof(sensor_init_data));
+		sensor_init_data.cfgtype = u32_3_18->cfgtype;
+		sensor_init_data.cfg.setting = compat_ptr(u32_3_18->cfg.setting);
+		cmd = VIDIOC_MSM_SENSOR_INIT_CFG;
+		rc = msm_sensor_init_subdev_ioctl(sd, cmd, &sensor_init_data);
+		if (rc < 0) {
+			pr_err("%s:%d VIDIOC_MSM_SENSOR_INIT_CFG_3_18 failed (non-fatal)",
+				__func__, __LINE__);
+			return rc;
+		}
+		msm_sensor_copy_probe_info_to_3_18(u32_3_18, &sensor_init_data);
+		return 0;
 	case VIDIOC_MSM_SENSOR_INIT_CFG32:
+		pr_info_ratelimited("compat cmd=0x%x expected32=0x%lx expected64=0x%lx",
+			cmd, (unsigned long)VIDIOC_MSM_SENSOR_INIT_CFG32,
+			(unsigned long)VIDIOC_MSM_SENSOR_INIT_CFG);
 		memset(&sensor_init_data, 0, sizeof(sensor_init_data));
 		sensor_init_data.cfgtype = u32->cfgtype;
 		sensor_init_data.cfg.setting = compat_ptr(u32->cfg.setting);
@@ -167,6 +217,9 @@ static long msm_sensor_init_subdev_do_ioctl(
 			sizeof(sensor_init_data.entity_name));
 		return 0;
 	default:
+		pr_err_ratelimited("compat default cmd=0x%x expected32=0x%lx expected64=0x%lx",
+			cmd, (unsigned long)VIDIOC_MSM_SENSOR_INIT_CFG32,
+			(unsigned long)VIDIOC_MSM_SENSOR_INIT_CFG);
 		return msm_sensor_init_subdev_ioctl(sd, cmd, arg);
 	}
 }

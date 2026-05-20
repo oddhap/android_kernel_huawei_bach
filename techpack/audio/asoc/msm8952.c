@@ -52,6 +52,9 @@ extern unsigned char AW87319_Audio_OFF(void);
 #endif
 
 #define DRV_NAME "msm8952-asoc-wcd"
+#define TAS2560_CODEC_NAME "tas2560-smartpa"
+#define TAS2560_PRI_DAI_NAME "tas2560-asi-pri"
+#define TAS2560_SEC_DAI_NAME "tas2560-asi-sec"
 #if defined(CONFIG_MACH_XIAOMI_LAND) || defined(CONFIG_MACH_XIAOMI_SANTONI)
 #define LANDTONI_AW8738_MODE 5
 #endif
@@ -87,6 +90,11 @@ static int msm_vi_feed_tx_ch = 2;
 static int mi2s_rx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 static int mi2s_rx_bits_per_sample = 16;
 static int mi2s_rx_sample_rate = SAMPLING_RATE_48KHZ;
+static bool msm8952_tas2560_smartpa;
+
+extern int tas2560_ext_enable_get(unsigned int index);
+extern int tas2560_ext_enable_set(unsigned int index, bool enable);
+extern void tas2560_ext_regdump(void);
 
 static atomic_t quat_mi2s_clk_ref;
 static atomic_t quin_mi2s_clk_ref;
@@ -184,6 +192,83 @@ static const char *const proxy_rx_ch_text[] = {"One", "Two", "Three", "Four",
 static const char *const vi_feed_ch_text[] = {"One", "Two"};
 static char const *mi2s_rx_sample_rate_text[] = {"KHZ_48",
 					"KHZ_96", "KHZ_192"};
+
+static int msm8952_tas2560_control_index(const char *name)
+{
+	if (!strncmp(name, "TAS2560 0", strlen("TAS2560 0")))
+		return 0;
+	if (!strncmp(name, "TAS2560 1", strlen("TAS2560 1")))
+		return 1;
+	if (!strncmp(name, "TAS2560 2", strlen("TAS2560 2")))
+		return 2;
+	if (!strncmp(name, "TAS2560 3", strlen("TAS2560 3")))
+		return 3;
+
+	return -EINVAL;
+}
+
+static int msm8952_tas2560_enable_get(struct snd_kcontrol *kcontrol,
+				      struct snd_ctl_elem_value *ucontrol)
+{
+	int index = msm8952_tas2560_control_index(kcontrol->id.name);
+
+	if (index < 0)
+		return 0;
+
+	ucontrol->value.integer.value[0] = tas2560_ext_enable_get(index);
+	return 0;
+}
+
+static int msm8952_tas2560_enable_put(struct snd_kcontrol *kcontrol,
+				      struct snd_ctl_elem_value *ucontrol)
+{
+	bool enable = !!ucontrol->value.integer.value[0];
+	int index = msm8952_tas2560_control_index(kcontrol->id.name);
+
+	if (index < 0)
+		return 0;
+
+	return tas2560_ext_enable_set(index, enable) > 0;
+}
+
+static int msm8952_tas2560_regdump_get(struct snd_kcontrol *kcontrol,
+				       struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = 0;
+	return 0;
+}
+
+static int msm8952_tas2560_regdump_put(struct snd_kcontrol *kcontrol,
+				       struct snd_ctl_elem_value *ucontrol)
+{
+	if (ucontrol->value.integer.value[0])
+		tas2560_ext_regdump();
+
+	return 0;
+}
+
+static const char * const msm8952_tas2560_enable_text[] = {
+	"Disable", "Enable",
+};
+static SOC_ENUM_SINGLE_EXT_DECL(msm8952_tas2560_enable_enum,
+				msm8952_tas2560_enable_text);
+
+static const char * const msm8952_tas2560_regdump_text[] = {"No", "Yes"};
+static SOC_ENUM_SINGLE_EXT_DECL(msm8952_tas2560_regdump_enum,
+				msm8952_tas2560_regdump_text);
+
+static const struct snd_kcontrol_new msm8952_tas2560_controls[] = {
+	SOC_ENUM_EXT("TAS2560 0 Enable", msm8952_tas2560_enable_enum,
+		     msm8952_tas2560_enable_get, msm8952_tas2560_enable_put),
+	SOC_ENUM_EXT("TAS2560 1 Enable", msm8952_tas2560_enable_enum,
+		     msm8952_tas2560_enable_get, msm8952_tas2560_enable_put),
+	SOC_ENUM_EXT("TAS2560 2 Enable", msm8952_tas2560_enable_enum,
+		     msm8952_tas2560_enable_get, msm8952_tas2560_enable_put),
+	SOC_ENUM_EXT("TAS2560 3 Enable", msm8952_tas2560_enable_enum,
+		     msm8952_tas2560_enable_get, msm8952_tas2560_enable_put),
+	SOC_ENUM_EXT("TAS2560 Regdump", msm8952_tas2560_regdump_enum,
+		     msm8952_tas2560_regdump_get, msm8952_tas2560_regdump_put),
+};
 
 #if defined(CONFIG_MACH_XIAOMI_ROVA) || defined(CONFIG_MACH_XIAOMI_TIARE) || defined(CONFIG_MACH_XIAOMI_LAND) || defined(CONFIG_MACH_XIAOMI_SANTONI)
 static const char *const rova_landtoni_lineout_text[] = {"DISABLE", "ENABLE", "DUALMODE"};
@@ -778,14 +863,27 @@ static int msm_proxy_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 static int msm_mi2s_snd_hw_params(struct snd_pcm_substream *substream,
 			     struct snd_pcm_hw_params *params)
 {
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	int be_id = rtd ? rtd->dai_link->id : -1;
+
 	pr_debug("%s(): substream = %s  stream = %d\n", __func__,
 		 substream->name, substream->stream);
-	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-		param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT,
-			       mi2s_rx_bit_format);
-	else
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+		if (msm8952_tas2560_smartpa &&
+		    (be_id == MSM_BACKEND_DAI_QUATERNARY_MI2S_RX ||
+		     be_id == MSM_BACKEND_DAI_QUINARY_MI2S_RX)) {
+			pr_info("%s: TAS2560 be_id=%d using S24_LE\n",
+				__func__, be_id);
+			param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT,
+				       SNDRV_PCM_FORMAT_S24_LE);
+		} else {
+			param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT,
+				       mi2s_rx_bit_format);
+		}
+	} else {
 		param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT,
 			       SNDRV_PCM_FORMAT_S16_LE);
+	}
 	return 0;
 }
 static int msm8952_get_clk_id(int port_id)
@@ -863,6 +961,14 @@ static uint32_t get_mi2s_rx_clk_val(int port_id)
 	 */
 	if (is_mi2s_rx_port(port_id))
 		clk_val = (mi2s_rx_sample_rate * mi2s_rx_bits_per_sample * 2);
+
+	if (msm8952_tas2560_smartpa &&
+	    (port_id == AFE_PORT_ID_QUATERNARY_MI2S_RX ||
+	     port_id == AFE_PORT_ID_QUINARY_MI2S_RX)) {
+		clk_val = mi2s_rx_sample_rate * 32 * 2;
+		pr_info("%s: TAS2560 port_id=0x%x clock=%u\n",
+			__func__, port_id, clk_val);
+	}
 
 	pr_debug("%s: MI2S Rx bit clock value: 0x%0x\n", __func__, clk_val);
 	return clk_val;
@@ -3322,6 +3428,50 @@ static struct snd_soc_dai_link msm8952_quin_dai_link[] = {
 	},
 };
 
+static void msm8952_tas2560_set_codec_link(struct snd_soc_dai_link *dai_link,
+					   const char *codec_dai_name,
+					   const struct snd_soc_ops *ops)
+{
+	dai_link->codec_name = TAS2560_CODEC_NAME;
+	dai_link->codec_of_node = NULL;
+	dai_link->codec_dai_name = codec_dai_name;
+	dai_link->codecs = NULL;
+	dai_link->num_codecs = 0;
+	dai_link->be_hw_params_fixup = msm_be_hw_params_fixup;
+	dai_link->ops = ops;
+}
+
+static void msm8952_tas2560_dailink_custom_check(struct snd_soc_card *card)
+{
+	struct snd_soc_dai_link *dai_link;
+	int i;
+
+	for (i = 0; i < card->num_links; i++) {
+		dai_link = card->dai_link + i;
+
+		switch (dai_link->id) {
+		case MSM_BACKEND_DAI_QUINARY_MI2S_RX:
+			msm8952_tas2560_set_codec_link(dai_link,
+						       TAS2560_PRI_DAI_NAME,
+						       &msm8952_quin_mi2s_be_ops);
+			pr_info("%s: routed QUIN MI2S RX to %s/%s\n",
+				__func__, TAS2560_CODEC_NAME,
+				TAS2560_PRI_DAI_NAME);
+			break;
+		case MSM_BACKEND_DAI_QUATERNARY_MI2S_RX:
+			msm8952_tas2560_set_codec_link(dai_link,
+						       TAS2560_SEC_DAI_NAME,
+						       &msm8952_quat_mi2s_be_ops);
+			pr_info("%s: routed QUAT MI2S RX to %s/%s\n",
+				__func__, TAS2560_CODEC_NAME,
+				TAS2560_SEC_DAI_NAME);
+			break;
+		default:
+			break;
+		}
+	}
+}
+
 static struct snd_soc_dai_link msm8952_split_a2dp_dai_link[] = {
 	{
 		.name = LPASS_BE_INT_BT_A2DP_RX,
@@ -3737,6 +3887,7 @@ static int msm8952_asoc_machine_probe(struct platform_device *pdev)
 	const char *wsa = "asoc-wsa-codec-names";
 	const char *type = NULL;
 	const char *ext_pa_str = NULL;
+	const char *smartpa_name = NULL;
 	const char *spk_ext_pa = "qcom,msm-spk-ext-pa";
 	int num_strings;
 	int id, i, val;
@@ -3970,6 +4121,20 @@ parse_mclk_freq:
 #endif
 
 	card = msm8952_populate_sndcard_dailinks(&pdev->dev);
+	card->controls = NULL;
+	card->num_controls = 0;
+	if (!of_property_read_string(pdev->dev.of_node,
+				     "qcom,smartpa-name", &smartpa_name) &&
+	    !strcmp(smartpa_name, "tas2560")) {
+		msm8952_tas2560_smartpa = true;
+		msm8952_tas2560_dailink_custom_check(card);
+		card->controls = msm8952_tas2560_controls;
+		card->num_controls = ARRAY_SIZE(msm8952_tas2560_controls);
+		dev_info(&pdev->dev, "%s: added TAS2560 card controls\n",
+			 __func__);
+	} else {
+		msm8952_tas2560_smartpa = false;
+	}
 	dev_dbg(&pdev->dev, "default codec configured\n");
 	num_strings = of_property_count_strings(pdev->dev.of_node,
 			ext_pa);

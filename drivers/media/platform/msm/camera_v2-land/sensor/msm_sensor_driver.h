@@ -18,4 +18,6 @@
 int32_t land_msm_sensor_driver_probe(void *setting,
 	struct msm_sensor_info_t *probed_info, char *entity_name);
 
+int32_t land_msm_get_sensor_product_name(void *setting);
+
 #endif

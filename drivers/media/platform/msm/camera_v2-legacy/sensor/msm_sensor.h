@@ -90,6 +90,12 @@ struct msm_sensor_ctrl_t {
 	uint8_t is_csid_tg_mode;
 	uint32_t is_secure;
 	uint8_t bypass_video_node_creation;
+	const char *product_name;
+	struct msm_sensor_afc_otp_info afc_otp_info;
+	struct msm_sensor_mmi_otp_flag hw_otp_check_flag;
+	struct msm_sensor_awb_otp_info awb_otp_info;
+	struct msm_sensor_lsc_otp_info lsc_otp_info;
+	struct msm_sensor_vendor_otp_info vendor_otp_info;
 };
 
 int msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp);

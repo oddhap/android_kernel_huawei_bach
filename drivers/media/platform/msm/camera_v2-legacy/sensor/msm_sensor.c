@@ -16,6 +16,7 @@
 #include "msm_cci.h"
 #include "msm_camera_io_util.h"
 #include "msm_camera_i2c_mux.h"
+#include "sensor_otp_common_if.h"
 #include <linux/regulator/rpm-smd-regulator.h>
 #include <linux/regulator/consumer.h>
 
@@ -37,6 +38,50 @@ void gc8034_gcore_identify_otp(struct msm_sensor_ctrl_t *s_ctrl);
 
 static struct msm_camera_i2c_fn_t msm_sensor_cci_func_tbl;
 static struct msm_camera_i2c_fn_t msm_sensor_secure_func_tbl;
+bool bach_front_hi843_hmirror_off;
+
+static bool msm_sensor_is_bach_front_hi843(struct msm_sensor_ctrl_t *s_ctrl)
+{
+	const char *sensor_name;
+
+	if (!s_ctrl || !s_ctrl->sensordata)
+		return false;
+
+	sensor_name = s_ctrl->sensordata->sensor_name;
+	if (!sensor_name)
+		return false;
+
+	return !strcmp(sensor_name, "hi843_kingcome_h7b8_pad") ||
+		!strcmp(sensor_name, "hi843_jsl_6124_pad");
+}
+
+static void msm_sensor_bach_front_hi843_orientation(
+	struct msm_sensor_ctrl_t *s_ctrl)
+{
+	int32_t rc;
+	uint16_t orientation = 0;
+
+	if (!msm_sensor_is_bach_front_hi843(s_ctrl) ||
+		!s_ctrl->sensor_i2c_client ||
+		!s_ctrl->sensor_i2c_client->i2c_func_tbl) {
+		bach_front_hi843_hmirror_off = false;
+		return;
+	}
+
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_read(
+		s_ctrl->sensor_i2c_client, 0x0000, &orientation,
+		MSM_CAMERA_I2C_BYTE_DATA);
+	if (rc < 0) {
+		bach_front_hi843_hmirror_off = false;
+		return;
+	}
+
+	orientation &= ~0x01;
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+		s_ctrl->sensor_i2c_client, 0x0000, orientation,
+		MSM_CAMERA_I2C_BYTE_DATA);
+	bach_front_hi843_hmirror_off = !rc;
+}
 
 static void msm_sensor_adjust_mclk(struct msm_camera_power_ctrl_t *ctrl)
 {
@@ -350,6 +395,72 @@ static int msm_sensor_get_af_status(struct msm_sensor_ctrl_t *s_ctrl,
 	return 0;
 }
 
+static int msm_sensor_get_otp_flag(struct msm_sensor_ctrl_t *s_ctrl,
+	void __user *setting)
+{
+	int32_t otp_index = -1;
+	int rc = 0;
+
+	if (s_ctrl->sensor_state != MSM_SENSOR_POWER_UP) {
+		pr_err("%s:%d failed: invalid state %d\n", __func__,
+			__LINE__, s_ctrl->sensor_state);
+		return -EFAULT;
+	}
+
+	if (is_exist_otp_function(s_ctrl, &otp_index)) {
+		rc = otp_function_lists[otp_index].sensor_otp_function(s_ctrl,
+			otp_index);
+		if (rc < 0)
+			pr_err("%s:%d OTP read failed rc %d\n", __func__,
+				__LINE__, rc);
+
+		pr_info("%s:%d %s mmi_otp_check_flag = 0x%x\n", __func__,
+			__LINE__, s_ctrl->sensordata->sensor_name,
+			s_ctrl->hw_otp_check_flag.mmi_otp_check_flag);
+	} else {
+		s_ctrl->hw_otp_check_flag.mmi_otp_check_flag = 0;
+		pr_err("%s:%d %s unsupported OTP operation\n", __func__,
+			__LINE__, s_ctrl->sensordata->sensor_name);
+	}
+
+	if (copy_to_user(setting, &s_ctrl->hw_otp_check_flag,
+		sizeof(s_ctrl->hw_otp_check_flag)))
+		return -EFAULT;
+
+	return rc;
+}
+
+static int msm_sensor_copy_otp(struct msm_sensor_ctrl_t *s_ctrl, int cfgtype,
+	void __user *setting)
+{
+	const void *src = NULL;
+	size_t size = 0;
+
+	switch (cfgtype) {
+	case CFG_GET_OTP_FLAG:
+		return msm_sensor_get_otp_flag(s_ctrl, setting);
+	case CFG_SET_AFC_OTP_INFO:
+		src = &s_ctrl->afc_otp_info;
+		size = sizeof(s_ctrl->afc_otp_info);
+		break;
+	case CFG_SET_AWB_OTP_INFO:
+		src = &s_ctrl->awb_otp_info;
+		size = sizeof(s_ctrl->awb_otp_info);
+		break;
+	case CFG_SET_LSC_OTP_INFO:
+		src = &s_ctrl->lsc_otp_info;
+		size = sizeof(s_ctrl->lsc_otp_info);
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	if (copy_to_user(setting, src, size))
+		return -EFAULT;
+
+	return 0;
+}
+
 static long msm_sensor_subdev_ioctl(struct v4l2_subdev *sd,
 			unsigned int cmd, void *arg)
 {
@@ -385,13 +496,29 @@ static long msm_sensor_subdev_ioctl(struct v4l2_subdev *sd,
 }
 
 #ifdef CONFIG_COMPAT
+static int msm_sensor_config32_3_18(struct msm_sensor_ctrl_t *s_ctrl,
+	void __user *argp);
+
 static long msm_sensor_subdev_do_ioctl(
 	struct file *file, unsigned int cmd, void *arg)
 {
 	struct video_device *vdev = video_devdata(file);
 	struct v4l2_subdev *sd = vdev_to_v4l2_subdev(vdev);
+	struct msm_sensor_ctrl_t *s_ctrl;
 	switch (cmd) {
+	case VIDIOC_MSM_SENSOR_CFG32_3_18:
+		s_ctrl = get_sctrl(sd);
+		if (!s_ctrl) {
+			pr_err("%s s_ctrl NULL\n", __func__);
+			return -EBADF;
+		}
+		pr_info_ratelimited("%s compat 3.18 cmd=0x%x expected32=0x%lx\n",
+			__func__, cmd, (unsigned long)VIDIOC_MSM_SENSOR_CFG32);
+		return msm_sensor_config32_3_18(s_ctrl, arg);
 	case VIDIOC_MSM_SENSOR_CFG32:
+		pr_info_ratelimited("%s compat cmd=0x%x expected32=0x%lx expected64=0x%lx\n",
+			__func__, cmd, (unsigned long)VIDIOC_MSM_SENSOR_CFG32,
+			(unsigned long)VIDIOC_MSM_SENSOR_CFG);
 		cmd = VIDIOC_MSM_SENSOR_CFG;
 	default:
 		return msm_sensor_subdev_ioctl(sd, cmd, arg);
@@ -537,6 +664,9 @@ static int msm_sensor_config32(struct msm_sensor_ctrl_t *s_ctrl,
 			rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->
 				i2c_write_table_sync(s_ctrl->sensor_i2c_client,
 				&conf_array);
+
+		if (!rc)
+			msm_sensor_bach_front_hi843_orientation(s_ctrl);
 
 		kfree(reg_setting);
 		break;
@@ -920,6 +1050,13 @@ static int msm_sensor_config32(struct msm_sensor_ctrl_t *s_ctrl,
 		}
 		break;
 	}
+	case CFG_GET_OTP_FLAG:
+	case CFG_SET_AFC_OTP_INFO:
+	case CFG_SET_AWB_OTP_INFO:
+	case CFG_SET_LSC_OTP_INFO:
+		rc = msm_sensor_copy_otp(s_ctrl, cdata->cfgtype,
+			compat_ptr(cdata->cfg.setting));
+		break;
 
 	default:
 		rc = -EFAULT;
@@ -928,6 +1065,74 @@ static int msm_sensor_config32(struct msm_sensor_ctrl_t *s_ctrl,
 
 DONE:
 	mutex_unlock(s_ctrl->msm_sensor_mutex);
+
+	return rc;
+}
+
+static void msm_sensor_copy_info_to_3_18(struct msm_sensor_ctrl_t *s_ctrl,
+	struct sensorb_cfg_data32_3_18 *cdata)
+{
+	int32_t i;
+
+	memcpy(cdata->cfg.sensor_info.sensor_name,
+		s_ctrl->sensordata->sensor_name,
+		sizeof(cdata->cfg.sensor_info.sensor_name));
+	cdata->cfg.sensor_info.session_id =
+		s_ctrl->sensordata->sensor_info->session_id;
+	for (i = 0; i < MSM_SENSOR_3_18_SUB_MODULE_MAX; i++) {
+		cdata->cfg.sensor_info.subdev_id[i] =
+			s_ctrl->sensordata->sensor_info->subdev_id[i];
+		cdata->cfg.sensor_info.subdev_intf[i] =
+			s_ctrl->sensordata->sensor_info->subdev_intf[i];
+	}
+	cdata->cfg.sensor_info.is_mount_angle_valid =
+		s_ctrl->sensordata->sensor_info->is_mount_angle_valid;
+	cdata->cfg.sensor_info.sensor_mount_angle =
+		s_ctrl->sensordata->sensor_info->sensor_mount_angle;
+	cdata->cfg.sensor_info.position =
+		s_ctrl->sensordata->sensor_info->position;
+	cdata->cfg.sensor_info.modes_supported =
+		s_ctrl->sensordata->sensor_info->modes_supported;
+}
+
+static int msm_sensor_config32_3_18(struct msm_sensor_ctrl_t *s_ctrl,
+	void __user *argp)
+{
+	struct sensorb_cfg_data32_3_18 *cdata =
+		(struct sensorb_cfg_data32_3_18 *)argp;
+	struct sensorb_cfg_data32 compat_cdata;
+	int32_t rc = 0;
+
+	CDBG("%s:%d %s cfgtype = %d\n", __func__, __LINE__,
+		s_ctrl->sensordata->sensor_name, cdata->cfgtype);
+
+	switch (cdata->cfgtype) {
+	case CFG_GET_SENSOR_INFO:
+		mutex_lock(s_ctrl->msm_sensor_mutex);
+		msm_sensor_copy_info_to_3_18(s_ctrl, cdata);
+		mutex_unlock(s_ctrl->msm_sensor_mutex);
+		break;
+	case CFG_GET_SENSOR_INIT_PARAMS:
+		mutex_lock(s_ctrl->msm_sensor_mutex);
+		cdata->cfg.sensor_init_params.modes_supported =
+			s_ctrl->sensordata->sensor_info->modes_supported;
+		cdata->cfg.sensor_init_params.position =
+			s_ctrl->sensordata->sensor_info->position;
+		cdata->cfg.sensor_init_params.sensor_mount_angle =
+			s_ctrl->sensordata->sensor_info->sensor_mount_angle;
+		mutex_unlock(s_ctrl->msm_sensor_mutex);
+		break;
+	default:
+		memset(&compat_cdata, 0, sizeof(compat_cdata));
+		compat_cdata.cfgtype = cdata->cfgtype;
+		if (cdata->cfgtype == CFG_SET_I2C_SYNC_PARAM)
+			compat_cdata.cfg.sensor_i2c_sync_params =
+				cdata->cfg.sensor_i2c_sync_params;
+		else
+			compat_cdata.cfg.setting = cdata->cfg.setting;
+		rc = msm_sensor_config32(s_ctrl, &compat_cdata);
+		break;
+	}
 
 	return rc;
 }
@@ -1057,6 +1262,9 @@ int msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 			rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->
 				i2c_write_table_sync(s_ctrl->sensor_i2c_client,
 					&conf_array);
+
+		if (!rc)
+			msm_sensor_bach_front_hi843_orientation(s_ctrl);
 
 		kfree(reg_setting);
 		break;
@@ -1402,6 +1610,13 @@ int msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 		}
 		break;
 	}
+	case CFG_GET_OTP_FLAG:
+	case CFG_SET_AFC_OTP_INFO:
+	case CFG_SET_AWB_OTP_INFO:
+	case CFG_SET_LSC_OTP_INFO:
+		rc = msm_sensor_copy_otp(s_ctrl, cdata->cfgtype,
+			cdata->cfg.setting);
+		break;
 
 	default:
 		rc = -EFAULT;

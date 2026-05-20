@@ -14,7 +14,11 @@
 #define MSM_SENSOR_MCLK_24HZ  24000000
 
 #define MAX_SENSOR_NAME 32
+#define MAX_SUPPORT_SENSOR_COUNT 2
+#define APP_INFO_MAX_LINE_LEN 128
 #define MAX_ACTUATOR_AF_TOTAL_STEPS 1024
+#define MSM_ROLLOFF_MAX_LIGHT 4
+#define MSM_ROLLOFF_SIZE (17 * 13)
 
 #define MAX_OIS_MOD_NAME_SIZE 32
 #define MAX_OIS_NAME_SIZE 32
@@ -342,6 +346,12 @@ enum msm_sensor_cfg_type_t {
 	CFG_WRITE_I2C_ARRAY_ASYNC,
 	CFG_WRITE_I2C_ARRAY_SYNC,
 	CFG_WRITE_I2C_ARRAY_SYNC_BLOCK,
+	CFG_START_FRM_CNT,
+	CFG_STOP_FRM_CNT,
+	CFG_GET_OTP_FLAG,
+	CFG_SET_AFC_OTP_INFO,
+	CFG_SET_AWB_OTP_INFO,
+	CFG_SET_LSC_OTP_INFO,
 };
 
 enum msm_actuator_cfg_type_t {
@@ -548,6 +558,7 @@ enum msm_sensor_init_cfg_type_t {
 	CFG_SINIT_PROBE,
 	CFG_SINIT_PROBE_DONE,
 	CFG_SINIT_PROBE_WAIT_DONE,
+	CFG_SINIT_GET_PRODUCT_NAME,
 };
 
 struct sensor_init_cfg_data {
@@ -557,6 +568,42 @@ struct sensor_init_cfg_data {
 	union {
 		void *setting;
 	} cfg;
+};
+
+struct msm_support_product_name_info {
+	char product_name_info[MAX_SUPPORT_SENSOR_COUNT][APP_INFO_MAX_LINE_LEN];
+};
+
+struct msm_sensor_afc_otp_info {
+	uint16_t starting_dac;
+	uint16_t infinity_dac;
+	uint16_t macro_dac;
+};
+
+struct msm_sensor_vendor_otp_info {
+	uint8_t vendor_id;
+};
+
+struct msm_sensor_awb_otp_info {
+	uint16_t RG;
+	uint16_t BG;
+	uint32_t typical_RG;
+	uint32_t typical_BG;
+};
+
+typedef struct {
+	uint16_t r_gain[MSM_ROLLOFF_SIZE];
+	uint16_t gr_gain[MSM_ROLLOFF_SIZE];
+	uint16_t gb_gain[MSM_ROLLOFF_SIZE];
+	uint16_t b_gain[MSM_ROLLOFF_SIZE];
+} msm_sensor_lsc_otp;
+
+struct msm_sensor_lsc_otp_info {
+	msm_sensor_lsc_otp lsc_otp[MSM_ROLLOFF_MAX_LIGHT];
+};
+
+struct msm_sensor_mmi_otp_flag {
+	uint16_t mmi_otp_check_flag;
 };
 
 #define VIDIOC_MSM_SENSOR_CFG \
@@ -605,4 +652,3 @@ struct sensor_init_cfg_data {
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 15, struct msm_ir_cut_cfg_data_t)
 
 #endif
-

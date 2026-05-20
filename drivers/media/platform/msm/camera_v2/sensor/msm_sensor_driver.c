@@ -1347,6 +1347,12 @@ static int32_t msm_sensor_driver_get_dt_data(struct msm_sensor_ctrl_t *s_ctrl)
 	CDBG("%s qcom,mclk-23880000 = %d\n", __func__,
 		s_ctrl->set_mclk_23880000);
 
+	s_ctrl->product_name = NULL;
+	of_property_read_string(of_node, "qcom,product-name",
+		&s_ctrl->product_name);
+	pr_info("%s product_name = %s\n", __func__,
+		s_ctrl->product_name ? s_ctrl->product_name : "<unset>");
+
 	return rc;
 
 FREE_VREG_DATA:
@@ -1575,6 +1581,42 @@ static void __exit msm_sensor_driver_exit(void)
 	CDBG("Enter");
 	platform_driver_unregister(&msm_sensor_platform_driver);
 	i2c_del_driver(&msm_sensor_driver_i2c);
+}
+
+int32_t msm_get_sensor_product_name(void *setting)
+{
+	int32_t i, rc = 0;
+	size_t len;
+	struct msm_sensor_ctrl_t *s_ctrl;
+	struct msm_support_product_name_info *product_name_info = setting;
+
+	if (!product_name_info)
+		return -EINVAL;
+
+	for (i = 0; i < MAX_SUPPORT_SENSOR_COUNT; i++) {
+		s_ctrl = g_sctrl[i];
+		if (!s_ctrl)
+			break;
+
+		if (!s_ctrl->product_name) {
+			pr_err("%s: camera %d has no product name\n",
+				__func__, i);
+			rc = -EINVAL;
+			break;
+		}
+
+		len = strnlen(s_ctrl->product_name, APP_INFO_MAX_LINE_LEN - 1);
+		if (copy_to_user(product_name_info->product_name_info[i],
+				 s_ctrl->product_name, len + 1)) {
+			rc = -EFAULT;
+			break;
+		}
+
+		pr_info("%s: camera %d product name: %s\n", __func__, i,
+			s_ctrl->product_name);
+	}
+
+	return rc;
 }
 
 module_init(msm_sensor_driver_init);

@@ -168,6 +168,32 @@ struct sensor_init_cfg_data32 {
 	} cfg;
 };
 
+/*
+ * Huawei's 3.18 camera HAL was built before the legacy 4.9 header gained
+ * IR_LED/IR_CUT submodules. Its compat ioctl therefore encodes a smaller
+ * sensor_init_cfg_data payload (0xbc instead of 0xcc).
+ */
+#define MSM_SENSOR_3_18_SUB_MODULE_MAX 12
+struct msm_sensor_info_t32_3_18 {
+	char     sensor_name[MAX_SENSOR_NAME];
+	uint32_t session_id;
+	int32_t  subdev_id[MSM_SENSOR_3_18_SUB_MODULE_MAX];
+	int32_t  subdev_intf[MSM_SENSOR_3_18_SUB_MODULE_MAX];
+	uint8_t  is_mount_angle_valid;
+	uint32_t sensor_mount_angle;
+	int modes_supported;
+	enum camb_position_t position;
+};
+
+struct sensor_init_cfg_data32_3_18 {
+	enum msm_sensor_init_cfg_type_t cfgtype;
+	struct msm_sensor_info_t32_3_18 probed_info;
+	char                            entity_name[MAX_SENSOR_NAME];
+	union {
+		compat_uptr_t setting;
+	} cfg;
+};
+
 struct msm_actuator_move_params_t32 {
 	int8_t dir;
 	int8_t sign_dir;
@@ -203,6 +229,16 @@ struct sensorb_cfg_data32 {
 		struct msm_sensor_info_t      sensor_info;
 		struct msm_sensor_init_params sensor_init_params;
 		compat_uptr_t                 setting;
+		struct msm_sensor_i2c_sync_params sensor_i2c_sync_params;
+	} cfg;
+};
+
+struct sensorb_cfg_data32_3_18 {
+	int cfgtype;
+	union {
+		struct msm_sensor_info_t32_3_18 sensor_info;
+		struct msm_sensor_init_params   sensor_init_params;
+		compat_uptr_t                   setting;
 		struct msm_sensor_i2c_sync_params sensor_i2c_sync_params;
 	} cfg;
 };
@@ -253,11 +289,17 @@ struct msm_flash_cfg_data_t32 {
 #define VIDIOC_MSM_SENSOR_INIT_CFG32 \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 10, struct sensor_init_cfg_data32)
 
+#define VIDIOC_MSM_SENSOR_INIT_CFG32_3_18 \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 10, struct sensor_init_cfg_data32_3_18)
+
 #define VIDIOC_MSM_CSIPHY_IO_CFG32 \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 4, struct csiphy_cfg_data32)
 
 #define VIDIOC_MSM_SENSOR_CFG32 \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 1, struct sensorb_cfg_data32)
+
+#define VIDIOC_MSM_SENSOR_CFG32_3_18 \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 1, struct sensorb_cfg_data32_3_18)
 
 #define VIDIOC_MSM_EEPROM_CFG32 \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 8, struct msm_eeprom_cfg_data32)
@@ -279,4 +321,3 @@ struct msm_flash_cfg_data_t32 {
 #endif
 
 #endif
-

@@ -1102,4 +1102,12 @@ config SND_SOC_TFA98XX
 	depends on I2C
 	help
 	Enables support for NXP98xx Smart PA.
+
+config SND_SOC_TAS2560
+	tristate "Texas Instruments TAS2560 Smart PA"
+	depends on I2C
+	help
+	  Enables support for Texas Instruments TAS2560 Smart PA amplifier.
+	  This driver supports TAS2560 I2C audio amplifier with
+	  calibration and misc device interfaces.
 endmenu

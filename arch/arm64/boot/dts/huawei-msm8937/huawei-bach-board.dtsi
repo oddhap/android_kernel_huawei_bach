@@ -26,6 +26,99 @@
 	};
 };
 
+&spmi_bus {
+	qcom,pmi8950@2 {
+		/delete-node/ qcom,leds@a100;
+	};
+};
+
+&tlmm {
+	gpio_led_pins {
+		gpio_led_pinctrl: gpio_led_pinctrl {
+			mux {
+				pins = "gpio125", "gpio128";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio125", "gpio128";
+				drive-strength = <2>;
+				bias-disable;
+				output-low;
+			};
+		};
+	};
+};
+
+&gpio_key_active {
+	mux {
+		pins = "gpio91";
+		function = "gpio";
+	};
+
+	config {
+		pins = "gpio91";
+		drive-strength = <2>;
+		bias-pull-up;
+	};
+};
+
+&gpio_key_suspend {
+	mux {
+		pins = "gpio91";
+		function = "gpio";
+	};
+
+	config {
+		pins = "gpio91";
+		drive-strength = <2>;
+		bias-pull-up;
+	};
+};
+
+&soc {
+	/delete-node/ gpio_keys;
+
+	gpio_keys {
+		compatible = "gpio-keys";
+		input-name = "gpio-keys";
+		pinctrl-names = "default", "sleep";
+		pinctrl-0 = <&gpio_key_active>;
+		pinctrl-1 = <&gpio_key_suspend>;
+
+		vol_up {
+			label = "volume_up";
+			gpios = <&tlmm 91 0x1>;
+			linux,input-type = <1>;
+			linux,code = <115>;
+			debounce-interval = <15>;
+		};
+	};
+
+	gpio-leds {
+		compatible = "gpio-leds";
+		status = "okay";
+		pinctrl-names = "default";
+		pinctrl-0 = <&gpio_led_pinctrl>;
+
+		red {
+			gpios = <&tlmm 128 0>;
+			label = "red";
+			linux,default-trigger = "none";
+			default-state = "off";
+			retain-state-suspended;
+		};
+
+		green {
+			gpios = <&tlmm 125 0>;
+			label = "green";
+			linux,default-trigger = "none";
+			default-state = "off";
+			retain-state-suspended;
+		};
+	};
+};
+
 /* Add BAH-W09 battery profiles to existing mtp_batterydata node */
 &mtp_batterydata {
 	qcom,batt-id-range-pct = <15>;
@@ -80,6 +173,8 @@
 };
 
 &qpnp_smbcharger {
+	/delete-property/ qcom,chg-led-sw-controls;
+	/delete-property/ qcom,chg-led-support;
 	qcom,float-voltage-mv = <4350>;
 	qcom,jeita-temp-hard-limit = <1>;
 	qcom,fastchg-current-batt-warm = <1500>;

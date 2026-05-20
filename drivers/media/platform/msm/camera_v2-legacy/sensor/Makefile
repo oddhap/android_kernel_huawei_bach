@@ -6,6 +6,7 @@ ccflags-y += -Idrivers/media/platform/msm/camera_v2-legacy/sensor/io
 ccflags-y += -Idrivers/media/platform/msm/camera_v2-legacy/sensor/cci
 obj-$(CONFIG_MSMB_CAMERA) += cci/ io/ csiphy/ csid/ actuator/ eeprom/ ois/ flash/ ir_led/ ir_cut/
 obj-$(CONFIG_MSM_CAMERA_SENSOR) += msm_sensor_init.o msm_sensor_driver.o msm_sensor.o
+obj-$(CONFIG_MSM_CAMERA_SENSOR) += sensor_otp_common_if.o sensor_otp_hi843_bah.o
 
 ifeq ($(CONFIG_MACH_XIAOMI_TIARE),y)
 obj-$(CONFIG_MSM_CAMERA_SENSOR) += gc8034.o
