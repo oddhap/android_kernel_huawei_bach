@@ -492,8 +492,6 @@ static int ramoops_init_prz(struct device *dev, struct ramoops_context *cxt,
 		return err;
 	}
 
-	persistent_ram_zap(*prz);
-
 	*paddr += sz;
 
 	return 0;
